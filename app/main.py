@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from typing import Any, Dict
 
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
@@ -30,6 +31,7 @@ _ip_request_timestamps: dict[str, list[float]] = defaultdict(list)
 
 
 def check_rate_limit(ip: str) -> bool:
+    """Check and update per-IP rolling rate limit for AI operations."""
     now = time.time()
     timestamps = _ip_request_timestamps[ip]
     # Prune expired
@@ -42,6 +44,7 @@ def check_rate_limit(ip: str) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Manage application startup seeding and graceful shutdown lifecycle."""
     # Startup: Seed in-memory database with sites, workers, shifts, reports, and passports
     repo = get_repository()
     seed_database(repo)
@@ -78,7 +81,8 @@ app.add_middleware(
 
 # Middleware 1: Structured JSON Logging & Security Headers & Rate Limiting
 @app.middleware("http")
-async def app_middleware(request: Request, call_next):
+async def app_middleware(request: Request, call_next: Any) -> Response:
+    """Process request timing, structured JSON logging, rate limiting, and security headers."""
     start_time = time.time()
     client_ip = request.client.host if request.client else "unknown"
 
@@ -148,7 +152,8 @@ async def app_middleware(request: Request, call_next):
 
 # Global Exception Handler (Never return raw stack traces)
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handle HTTP exceptions with structured JSON error payload without stack traces."""
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -161,7 +166,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle uncaught internal exceptions with generic error response and logged details."""
     logger.exception("Unhandled application exception")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -176,7 +182,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 # Health Check Endpoint
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def health_check() -> Dict[str, str]:
+    """Return health status and operational metadata for platform monitoring."""
     return {
         "status": "ok",
         "service": "FairShift",
@@ -196,20 +203,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # HTML Page Serving Routes
 @app.get("/", response_class=HTMLResponse, tags=["Pages"])
-async def serve_landing():
+async def serve_landing() -> FileResponse:
+    """Serve landing page HTML."""
     return FileResponse("static/index.html")
 
 
 @app.get("/worker", response_class=HTMLResponse, tags=["Pages"])
-async def serve_worker_app():
+async def serve_worker_app() -> FileResponse:
+    """Serve mobile-first worker application shell HTML."""
     return FileResponse("static/worker.html")
 
 
 @app.get("/admin", response_class=HTMLResponse, tags=["Pages"])
-async def serve_admin_dashboard():
+async def serve_admin_dashboard() -> FileResponse:
+    """Serve executive admin dashboard HTML."""
     return FileResponse("static/admin.html")
 
 
 @app.get("/passport/{token}", response_class=HTMLResponse, tags=["Pages"])
-async def serve_passport_page(token: str):
+async def serve_passport_page(token: str) -> FileResponse:
+    """Serve public verifiable skill passport HTML page."""
     return FileResponse("static/passport.html")

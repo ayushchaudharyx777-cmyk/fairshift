@@ -193,9 +193,7 @@ CRITICAL: Return ONLY valid JSON, with NO surrounding markdown commentary.
 
 
 async def explain_payslip(payslip_dict: Dict[str, Any], language: str = "en") -> str:
-    """
-    Explain payslip in worker's native language (en, hi, ta) in simple, dignifying terms.
-    """
+    """Generate empathetic multilingual explanation of payslip earnings and deductions."""
     cache_key = f"payslip:{language}:{payslip_dict.get('worker_id')}:{payslip_dict.get('net_pay')}"
     cached = _get_from_cache(cache_key)
     if cached:
