@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from typing import List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from app.models import (
     WorkerLoginRequest, WorkerLoginResponse, Shift, CheckInRequest, CheckOutRequest,
     SafetyReportCreateRequest, SafetyReport, AnonymousFeedback, AnonymousFeedbackCreateRequest,
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/api/v1/worker", tags=["Worker API"])
 
 
 @router.post("/login", response_model=WorkerLoginResponse)
-async def worker_login(payload: WorkerLoginRequest, response: Response, repo: InMemoryRepository = Depends(get_repository)):
+async def worker_login(payload: WorkerLoginRequest, response: Response, repo: InMemoryRepository = Depends(get_repository)) -> WorkerLoginResponse:
+    """Authenticate worker via mobile phone and PIN, establishing HttpOnly session."""
     worker = repo.get_worker_by_phone(payload.phone)
     if not worker or not verify_pin(payload.pin, worker.pin_hash):
         raise HTTPException(
@@ -55,7 +56,8 @@ async def worker_login(payload: WorkerLoginRequest, response: Response, repo: In
 
 
 @router.post("/logout")
-async def worker_logout(response: Response):
+async def worker_logout(response: Response) -> Dict[str, str]:
+    """Terminate authenticated worker session and clear cookie."""
     response.delete_cookie("worker_session")
     return {"status": "ok", "message": "Successfully logged out"}
 
@@ -64,7 +66,8 @@ async def worker_logout(response: Response):
 async def get_worker_me(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> Dict[str, Any]:
+    """Retrieve authenticated worker profile, active shift, and fatigue violations."""
     worker = repo.get_worker(worker_id)
     if not worker:
         raise HTTPException(status_code=404, detail="Worker profile not found")
@@ -87,7 +90,8 @@ async def check_in(
     payload: CheckInRequest,
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> Shift:
+    """Start a new active work shift for authenticated worker."""
     worker = repo.get_worker(worker_id)
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -121,7 +125,8 @@ async def check_out(
     payload: CheckOutRequest,
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> Shift:
+    """End active shift, computing total, regular, and 2x overtime hours."""
     worker = repo.get_worker(worker_id)
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -151,7 +156,8 @@ async def check_out(
 async def get_worker_shifts(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> List[Shift]:
+    """Retrieve full shift history for authenticated worker."""
     return repo.get_shifts(worker_id=worker_id)
 
 
@@ -159,7 +165,8 @@ async def get_worker_shifts(
 async def get_worker_payslip(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> Payslip:
+    """Generate 14-day transparent payslip with 2x overtime and statutory deductions."""
     worker = repo.get_worker(worker_id)
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -179,7 +186,8 @@ async def explain_worker_payslip(
     payload: ExplainPayslipRequest,
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> ExplainPayslipResponse:
+    """Request AI-generated plain-language voice explanation of worker payslip."""
     worker = repo.get_worker(worker_id)
     site = repo.get_site(worker.site_id)
     shifts = repo.get_shifts(worker_id=worker.id)
@@ -202,7 +210,8 @@ async def submit_safety_report(
     payload: SafetyReportCreateRequest,
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> SafetyReport:
+    """Submit worker safety report with automated multilingual AI hazard triage."""
     worker = repo.get_worker(worker_id)
     site_id = payload.site_id or worker.site_id
     lang = payload.language or "en"
@@ -231,19 +240,19 @@ async def submit_safety_report(
 async def list_worker_safety_reports(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> List[SafetyReport]:
+    """List site safety hazard reports and status updates."""
     worker = repo.get_worker(worker_id)
-    # Return reports for worker's site
     return repo.get_safety_reports(site_id=worker.site_id)
 
 
 @router.post("/feedback")
 async def submit_anonymous_feedback(
     payload: AnonymousFeedbackCreateRequest,
-    # Worker auth ensures genuine worker origin, but worker_id is intentionally NEVER passed to repository!
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> Dict[str, str]:
+    """Submit anonymized workplace feedback with strict exclusion of worker identity."""
     dt_now = datetime.now(timezone.utc)
     iso_year, iso_week, _ = dt_now.isocalendar()
     current_iso_week = f"{iso_year}-W{iso_week:02d}"
@@ -269,7 +278,8 @@ async def submit_anonymous_feedback(
 async def get_worker_passport(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> SkillPassport:
+    """Retrieve verifiable skill passport for authenticated worker."""
     passport = repo.get_passport_by_worker(worker_id)
     if not passport:
         raise HTTPException(status_code=404, detail="Skill passport not found")
@@ -280,7 +290,8 @@ async def get_worker_passport(
 async def get_worker_fatigue_status(
     worker_id: str = Depends(get_current_worker_id),
     repo: InMemoryRepository = Depends(get_repository)
-):
+) -> List[FatigueAlert]:
+    """Check active fatigue safety violations for authenticated worker."""
     worker = repo.get_worker(worker_id)
     site = repo.get_site(worker.site_id)
     shifts = repo.get_shifts(worker_id=worker.id)

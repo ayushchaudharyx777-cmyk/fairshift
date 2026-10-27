@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from app.models import (
     Site, Worker, Shift, SafetyReport, AnonymousFeedback, SkillPassport,
     TrainingRecord, PastEmployer, ExperienceItem
@@ -9,7 +10,8 @@ from app.security import hash_pin
 from app.services.payroll import calculate_shift_hours
 
 
-def seed_database(repo: InMemoryRepository):
+def seed_database(repo: InMemoryRepository) -> None:
+    """Seed in-memory repository with sites, workers, shifts, safety reports, feedback, and skill passports."""
     # Clear existing state
     repo.sites.clear()
     repo.workers.clear()
@@ -70,7 +72,8 @@ def seed_database(repo: InMemoryRepository):
     shift_counter = 1
 
     # Base helper to create completed shift
-    def add_completed_shift(wid, site_id, sector, start_dt, hours, notes=None):
+    def add_completed_shift(wid: str, site_id: str, sector: str, start_dt: datetime, hours: float, notes: Optional[str] = None) -> None:
+        """Create and register a completed shift with calculated regular and overtime hours."""
         nonlocal shift_counter
         end_dt = start_dt + timedelta(hours=hours)
         start_iso = start_dt.isoformat()

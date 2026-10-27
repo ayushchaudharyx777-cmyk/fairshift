@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sse_starlette.sse import EventSourceResponse
 from app.config import get_settings
 from app.models import (
-    AdminLoginRequest, AdminLoginResponse, KPIStatsResponse,
-    SafetyReport, SafetyReportUpdateRequest, FatigueAlert, AnonymousFeedback
+    AdminLoginRequest, AdminLoginResponse,
+    SafetyReport, SafetyReportUpdateRequest, FatigueAlert
 )
 from app.repository import InMemoryRepository, get_repository
 from app.security import (
@@ -20,7 +20,8 @@ router = APIRouter(prefix="/api/v1/admin", tags=["Admin API"])
 
 
 @router.post("/login", response_model=AdminLoginResponse)
-async def admin_login(payload: AdminLoginRequest, response: Response):
+async def admin_login(payload: AdminLoginRequest, response: Response) -> AdminLoginResponse:
+    """Authenticate administrator using secret PIN and issue session cookie."""
     settings = get_settings()
     if payload.pin != settings.ADMIN_PIN:
         raise HTTPException(
@@ -40,7 +41,8 @@ async def admin_login(payload: AdminLoginRequest, response: Response):
 
 
 @router.post("/logout")
-async def admin_logout(response: Response):
+async def admin_logout(response: Response) -> Dict[str, str]:
+    """Terminate administrator session and clear session cookie."""
     response.delete_cookie("admin_session")
     return {"status": "ok", "message": "Admin logged out"}
 
@@ -50,8 +52,8 @@ async def get_admin_overview(
     site_id: Optional[str] = None,
     authorized: bool = Depends(require_admin_auth),
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """Return comprehensive dashboard KPIs, chart data, and site summaries."""
+) -> Dict[str, Any]:
+    """Return executive dashboard KPIs, weekly hours bar chart, and facility metrics."""
     sites = repo.get_sites()
     workers = repo.get_workers()
     all_shifts = repo.get_shifts()
@@ -100,7 +102,6 @@ async def get_admin_overview(
 
     # 5. Worker Weekly Hours for SVG Bar Chart
     worker_weekly_hours = []
-    worker_map = {w.id: w for w in repo.get_workers()}
     shifts_by_worker = defaultdict(float)
     for s in weekly_shifts:
         shifts_by_worker[s.worker_id] += s.total_hours
@@ -143,8 +144,8 @@ async def get_fatigue_alerts(
     site_id: Optional[str] = None,
     authorized: bool = Depends(require_admin_auth),
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """Detect and return all active fatigue violations across all sites/workers."""
+) -> List[FatigueAlert]:
+    """Detect and return active fatigue violations across all sites and workers."""
     workers = repo.get_workers()
     sites = repo.get_sites()
     shifts = repo.get_shifts(site_id=site_id)
@@ -162,8 +163,8 @@ async def get_safety_kanban(
     site_id: Optional[str] = None,
     authorized: bool = Depends(require_admin_auth),
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """Kanban board grouped into Reported, Acknowledged, and Resolved columns."""
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Retrieve safety reports partitioned into Reported, Acknowledged, and Resolved columns."""
     reports = repo.get_safety_reports(site_id=site_id)
     kanban: Dict[str, List[Dict[str, Any]]] = {
         "Reported": [],
@@ -188,8 +189,8 @@ async def update_safety_report_status(
     payload: SafetyReportUpdateRequest,
     authorized: bool = Depends(require_admin_auth),
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """Transition safety report status (Reported -> Acknowledged -> Resolved)."""
+) -> SafetyReport:
+    """Transition safety report workflow state between Reported, Acknowledged, and Resolved."""
     report = repo.get_safety_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Safety report not found")
@@ -206,11 +207,10 @@ async def get_feedback_summary(
     site_id: Optional[str] = None,
     authorized: bool = Depends(require_admin_auth),
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """Anonymous feedback aggregated by site with zero worker identification."""
+) -> List[Dict[str, Any]]:
+    """Aggregate anonymous worker ratings and comments by workplace site."""
     feedbacks = repo.get_feedbacks(site_id=site_id)
     sites = repo.get_sites()
-    site_map = {s.id: s.name for s in sites}
 
     by_site: Dict[str, Dict[str, Any]] = {}
     for s in sites:
@@ -261,11 +261,8 @@ async def get_feedback_summary(
 async def sse_event_stream(
     request: Request,
     repo: InMemoryRepository = Depends(get_repository)
-):
-    """
-    Server-Sent Events endpoint.
-    Live notifies admin of new critical/high safety reports and status updates.
-    """
+) -> EventSourceResponse:
+    """Stream real-time safety hazard alerts and site updates via Server-Sent Events."""
     # Verify auth via cookie or query param or header
     cookie_token = request.cookies.get("admin_session")
     auth_header = request.headers.get("Authorization")
