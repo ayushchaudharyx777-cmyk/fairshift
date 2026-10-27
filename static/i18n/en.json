@@ -16,6 +16,8 @@
   "hospital_worker": "Priya (Hospital Nurse)",
   "logout": "Log Out",
   "active_shift": "Active Shift in Progress",
+  "shift_in_progress": "Shift in progress",
+  "ready_to_clock_in": "Ready to clock in",
   "no_active_shift": "No active shift right now",
   "check_in_btn": "Start Shift (Check-In)",
   "check_out_btn": "End Shift (Check-Out)",
