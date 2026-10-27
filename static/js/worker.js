@@ -126,6 +126,15 @@
     setText('i18n-share-passport', 'share_passport_btn');
     setText('i18n-copy-link', 'copy_link_btn');
 
+    const homeTimerSubtext = document.getElementById('homeTimerSubtext');
+    if (homeTimerSubtext) {
+      if (activeShift && activeShift.status === 'active') {
+        homeTimerSubtext.textContent = s.shift_in_progress || 'Shift in progress';
+      } else {
+        homeTimerSubtext.textContent = s.ready_to_clock_in || 'Ready to clock in';
+      }
+    }
+
     if (langSelector) langSelector.value = currentLang;
   }
 
@@ -311,6 +320,7 @@
     const homeTimer = document.getElementById('homeTimerDisplay');
     const shiftTimer = document.getElementById('shiftTimerDisplay');
     const homeBadge = document.getElementById('homeShiftStatusBadge');
+    const homeTimerSubtext = document.getElementById('homeTimerSubtext');
     const shiftStatusText = document.getElementById('shiftStatusText');
     const shiftIndicator = document.getElementById('shiftStatusIndicator');
     const shiftPolicy = document.getElementById('shiftSectorPolicy');
@@ -328,6 +338,7 @@
     if (shift && shift.status === 'active') {
       homeBadge.textContent = 'Shift Active';
       homeBadge.className = 'badge badge-success';
+      if (homeTimerSubtext) homeTimerSubtext.textContent = i18nStrings.shift_in_progress || 'Shift in progress';
       shiftStatusText.textContent = 'Clocked In (Active Duty)';
       shiftIndicator.style.background = 'var(--color-success)';
 
@@ -362,6 +373,7 @@
     } else {
       homeBadge.textContent = 'Off Duty';
       homeBadge.className = 'badge badge-info';
+      if (homeTimerSubtext) homeTimerSubtext.textContent = i18nStrings.ready_to_clock_in || 'Ready to clock in';
       shiftStatusText.textContent = 'Not Clocked In';
       shiftIndicator.style.background = 'var(--text-muted)';
       homeTimer.textContent = '00:00:00';
