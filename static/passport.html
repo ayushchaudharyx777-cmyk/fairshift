@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairShift Digital Skill Passport — UN SDG 8 Verified Portable Credential</title>
+  <meta name="description" content="Verifiable digital skill passport and safety duty history for shift workers. Portable across employers under UN SDG 8.">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192.svg">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+
+  <!-- Header -->
+  <header style="border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface); padding: 0.85rem 0;">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+      <a href="/" style="display: flex; align-items: center; gap: 0.65rem; text-decoration: none; color: inherit;">
+        <img src="/static/icons/icon-192.svg" alt="FairShift Logo" width="32" height="32" style="border-radius: 6px;">
+        <span style="font-weight: 800; font-size: 1.15rem;">FairShift</span>
+        <span class="badge badge-info">UN SDG 8 Passport</span>
+      </a>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+          </svg>
+        </button>
+        <a href="/worker" class="btn btn-primary btn-sm">Worker App</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="flex: 1; padding-top: 2rem; padding-bottom: 3rem; max-width: 680px;">
+    
+    <div id="passportLoadingState" style="text-align: center; padding: 3rem;">
+      <p style="font-size: 1.1rem; color: var(--text-secondary);">Verifying Skill Passport credential on FairShift ledger...</p>
+    </div>
+
+    <div id="passportErrorState" style="display: none; text-align: center; padding: 3rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+      <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;">Passport Not Found</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">The credential link may be invalid or expired.</p>
+      <a href="/" class="btn btn-secondary">Return to Home</a>
+    </div>
+
+    <!-- Verified Passport Card -->
+    <div id="passportContentState" style="display: none; flex-direction: column; gap: 1.5rem;">
+      
+      <div class="passport-card">
+        <div class="passport-header">
+          <div id="pubAvatar" class="avatar-initials">--</div>
+          <div class="passport-meta">
+            <h2 id="pubWorkerName" style="font-size: 1.4rem; color: #FFFFFF; font-weight: 800;">Worker Name</h2>
+            <p id="pubRole" style="font-size: 0.95rem; color: #5EEAD4; font-weight: 600;">Trade Role</p>
+            <span id="pubSiteName" style="font-size: 0.8rem; color: #94A3B8;">Current Deployment</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">
+            Verified Badges & Decent Work Compliance
+          </div>
+          <div id="pubBadgesList" class="passport-badges-list"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">
+            Endorsed Skills & Competencies
+          </div>
+          <div id="pubSkillsList" class="passport-skills-list"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">
+            Accredited Safety Trainings
+          </div>
+          <div id="pubTrainingsList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">
+            Verified Employment History
+          </div>
+          <div id="pubEmployersList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">
+            Professional Experience Timeline
+          </div>
+          <div id="pubTimelineList" class="timeline-list"></div>
+        </div>
+
+        <!-- Share & Action Bar -->
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem; flex-wrap: wrap;">
+          <button id="btnPubShare" class="btn btn-primary" style="flex: 1; min-width: 160px;">
+            🔗 Share Credential
+          </button>
+          <button id="btnPubCopy" class="btn btn-secondary" style="flex: 1; min-width: 160px;">
+            📋 Copy Public Link
+          </button>
+        </div>
+      </div>
+
+      <!-- SDG 8 Portability Explanation -->
+      <div class="card" style="border: 1px solid var(--border-subtle); background: var(--bg-surface);">
+        <h4 style="font-size: 0.95rem; color: var(--color-primary); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>🕊️</span> Portable Credential Guarantee (UN SDG 8)
+        </h4>
+        <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
+          Under United Nations Sustainable Development Goal 8, worker skill credentials and verified accident-free duty records are owned entirely by the worker. They can present this verifiable link to any future employer or site contractor to secure fair wages without re-testing or credential exploitation.
+        </p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <div id="passportToastContainer" class="toast-container"></div>
+
+  <script src="/static/js/passport.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "FairShift - UN SDG 8 Decent Work Platform",
+  "short_name": "FairShift",
+  "description": "Dignified shift tracking, fair overtime wages, voice safety reporting, and digital skill passports for shift workers.",
+  "start_url": "/worker",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#14B8A6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

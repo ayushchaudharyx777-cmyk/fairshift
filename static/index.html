@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairShift — UN SDG 8 Decent Work Platform for Shift Workers</title>
+  <meta name="description" content="FairShift protects shift workers in Construction and Hospitals with transparent 2x overtime wages, voice-powered AI safety reporting, fatigue alerts, and portable skill passports.">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192.svg">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Header Navigation -->
+  <header style="border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface); padding: 1rem 0;">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <img src="/static/icons/icon-192.svg" alt="FairShift Logo" width="36" height="36" style="border-radius: 8px;">
+        <div>
+          <span style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">FairShift</span>
+          <span class="badge badge-info" style="margin-left: 0.5rem;">UN SDG 8</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle dark/light theme">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+          </svg>
+        </button>
+        <a href="/worker" class="btn btn-secondary btn-sm" id="navWorkerLink">Worker App</a>
+        <a href="/admin" class="btn btn-primary btn-sm" id="navAdminLink">Admin Portal</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="container" style="padding-top: 3.5rem; padding-bottom: 3rem; text-align: center;">
+      <div class="badge badge-info" style="margin-bottom: 1rem; padding: 0.4rem 0.9rem; font-size: 0.85rem;">
+        🕊️ Advancing UN Sustainable Development Goal 8: Decent Work & Economic Growth
+      </div>
+      <h1 style="font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 800; max-width: 850px; margin: 0 auto 1.25rem; letter-spacing: -0.03em;">
+        Dignified Shifts, Fair Overtime Wages & Voice-First Safety for Essential Workers.
+      </h1>
+      <p style="font-size: 1.15rem; max-width: 680px; margin: 0 auto 2rem; color: var(--text-secondary);">
+        Purpose-built for vulnerable shift workers across high-risk sectors: <strong>Construction Sites</strong> and <strong>Hospitals</strong> in India.
+      </p>
+
+      <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem;">
+        <a href="/worker" class="btn btn-primary" id="heroWorkerBtn" style="min-width: 200px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          Open Worker App
+        </a>
+        <a href="/admin" class="btn btn-secondary" id="heroAdminBtn" style="min-width: 200px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Open Admin Portal
+        </a>
+      </div>
+
+      <!-- Quick Demo Credentials Box -->
+      <div class="card" style="max-width: 800px; margin: 0 auto; text-align: left; border: 1px solid var(--color-primary-border); background: var(--bg-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+          <h2 style="font-size: 1.1rem; color: var(--color-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <span>🔑</span> Instant Evaluation Credentials (Pre-Seeded)
+          </h2>
+          <span class="badge badge-success">Ready to Test</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem;">
+          <!-- Construction Worker -->
+          <div style="padding: 0.85rem; background: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">🏗️ Construction Sector</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Worker: <strong>Rajesh Kumar</strong></div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Phone: <code style="color: var(--color-primary);">9876543210</code></div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">PIN: <code style="color: var(--color-primary);">1234</code></div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-warning);">*Active shift running (live timer demo)</div>
+          </div>
+          <!-- Hospital Nurse -->
+          <div style="padding: 0.85rem; background: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">🏥 Hospital Sector</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Worker: <strong>Priya Sharma</strong></div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Phone: <code style="color: var(--color-primary);">9876543220</code></div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">PIN: <code style="color: var(--color-primary);">1234</code></div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-info);">*12h shift rotation & rest gap case</div>
+          </div>
+          <!-- Admin Dashboard -->
+          <div style="padding: 0.85rem; background: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">🛡️ Admin Dashboard</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Role: Site Safety & Payroll Admin</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Admin PIN: <code style="color: var(--color-primary);">4821</code></div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Live Features: Real-time SSE Alerts</div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-success);">*Full Kanban & fatigue heat-table</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SDG 8 Alignment & Core Pillars -->
+    <section class="container" style="padding-bottom: 4rem;">
+      <div style="text-align: center; margin-bottom: 2.5rem;">
+        <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">The 5 Pillars of FairShift (UN SDG 8)</h2>
+        <p>Eliminating wage theft, hazardous working conditions, and exploitation.</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
+        <!-- Pillar 1 -->
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">⏱️</div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Guaranteed 2x Overtime</h3>
+          <p style="font-size: 0.9rem;">Automated sector rules: 8h for construction, 12h for hospitals. Overtime automatically multiplied at 2x rate with transparent SVG payslips.</p>
+        </div>
+        <!-- Pillar 2 -->
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">🌐</div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Multilingual Voice AI</h3>
+          <p style="font-size: 0.9rem;">Glowing animated teal Voice Orb powered by Web Speech API & Gemini. Speak in English, Hindi, or Tamil for instant hazard triage and payslip readouts.</p>
+        </div>
+        <!-- Pillar 3 -->
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">🛡️</div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Fatigue Violation Guards</h3>
+          <p style="font-size: 0.9rem;">Proactive algorithms detect shifts &gt;10h/day, weekly hours &gt;60h, and rest intervals &lt;8h to prevent fatal workplace accidents before they happen.</p>
+        </div>
+        <!-- Pillar 4 -->
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">🔒</div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">100% Anonymized Feedback</h3>
+          <p style="font-size: 0.9rem;">Shift workers rate management and safety without fear of retaliation. Zero worker IDs are stored in database records.</p>
+        </div>
+        <!-- Pillar 5 -->
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">🪪</div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Portable Skill Passports</h3>
+          <p style="font-size: 0.9rem;">Verifiable digital passports prove skills, safety training, and clean accident records, giving workers bargaining power across employers.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="border-top: 1px solid var(--border-subtle); padding: 2rem 0; text-align: center; color: var(--text-secondary); font-size: 0.88rem;">
+    <div class="container">
+      <p>Built with ❤️ for decent work, fair wages, and worker dignity under UN SDG 8.</p>
+      <p style="margin-top: 0.35rem; font-size: 0.78rem; color: var(--text-muted);">FairShift Platform &copy; 2026. Deployable to Google Cloud Run.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Theme Toggle Handler
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const htmlElem = document.documentElement;
+    const savedTheme = localStorage.getItem('fairshift_theme') || 'dark';
+    htmlElem.setAttribute('data-theme', savedTheme);
+
+    themeToggleBtn.addEventListener('click', () => {
+      const current = htmlElem.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      htmlElem.setAttribute('data-theme', next);
+      localStorage.setItem('fairshift_theme', next);
+    });
+  </script>
+</body>
+</html>

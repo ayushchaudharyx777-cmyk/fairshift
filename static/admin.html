@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairShift Admin Dashboard — UN SDG 8 Decent Work Command Center</title>
+  <meta name="description" content="Site safety, fatigue oversight, transparent overtime analytics, and real-time incident triage for Construction and Hospital sectors.">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192.svg">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  
+  <!-- ================= ADMIN LOGIN MODAL / SCREEN ================= -->
+  <div id="adminLoginOverlay" style="position: fixed; inset: 0; background: var(--bg-app); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
+    <div class="card" style="width: 100%; max-width: 420px; text-align: center; border: 1px solid var(--color-primary-border); background: var(--bg-surface); padding: 2rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🛡️</div>
+      <h1 style="font-size: 1.4rem; margin-bottom: 0.35rem;">FairShift Admin Portal</h1>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Safety Oversight & Fair Labor Compliance (UN SDG 8)</p>
+      
+      <form id="adminLoginForm">
+        <div class="input-group" style="text-align: left;">
+          <label for="adminPinInput" class="input-label">Admin Security PIN</label>
+          <input type="password" id="adminPinInput" class="input-field" placeholder="Enter PIN (Default: 4821)" required autofocus maxlength="10">
+        </div>
+        <button type="submit" id="adminLoginBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          Authenticate as Admin
+        </button>
+      </form>
+      <div style="margin-top: 1.25rem; font-size: 0.78rem; color: var(--text-muted);">
+        Default pre-seeded Admin PIN: <code style="color: var(--color-primary);">4821</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN ADMIN DASHBOARD LAYOUT ================= -->
+  <div class="admin-layout" id="adminMainLayout" style="display: none;">
+    
+    <!-- Collapsible Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <img src="/static/icons/icon-192.svg" alt="FairShift Logo" width="30" height="30" style="border-radius: 6px;">
+          <div>
+            <h2 style="font-size: 1.1rem; letter-spacing: -0.02em;">FairShift</h2>
+            <span style="font-size: 0.7rem; color: var(--color-primary); font-weight: 700;">SDG 8 COMMAND</span>
+          </div>
+        </div>
+        <!-- Realtime SSE Pulse indicator -->
+        <div id="ssePulseStatus" title="Real-time SSE Stream Active" style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--color-success); font-weight: 700;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-success); box-shadow: 0 0 8px var(--color-success); animation: pulse 1.5s infinite;"></span>
+          LIVE
+        </div>
+      </div>
+
+      <!-- Sector / Site Filter Selector -->
+      <div>
+        <label for="adminSiteFilter" class="input-label" style="margin-bottom: 0.4rem; display: block;">Filter Sector / Site:</label>
+        <select id="adminSiteFilter" class="select-field" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+          <option value="">🏢 All Sites (Cross-Sector)</option>
+          <option value="site-construction">🏗️ Skyline Construction Site, Chennai</option>
+          <option value="site-hospital">🏥 City Care Hospital, Chennai</option>
+        </select>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav style="display: flex; flex-direction: column; gap: 0.4rem;">
+        <button class="admin-nav-item active" data-section="sectionOverview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Overview & KPIs
+        </button>
+        <button class="admin-nav-item" data-section="sectionSafetyKanban">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Safety Kanban Queue
+        </button>
+        <button class="admin-nav-item" data-section="sectionFatigueAlerts">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Fatigue Early Warning
+        </button>
+        <button class="admin-nav-item" data-section="sectionFeedback">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Anonymous Worker Voice
+        </button>
+      </nav>
+
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 0.65rem;">
+        <button id="adminThemeToggle" class="btn btn-secondary btn-sm" style="width: 100%;">
+          Toggle Dark/Light Mode
+        </button>
+        <button id="adminLogoutBtn" class="btn btn-secondary btn-sm" style="width: 100%; color: var(--color-critical);">
+          Admin Log Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="admin-main">
+      
+      <!-- Top Bar -->
+      <header class="admin-topbar">
+        <div>
+          <h1 id="adminPageTitle" style="font-size: 1.5rem; letter-spacing: -0.02em;">Executive Decent-Work Oversight</h1>
+          <p id="adminSiteSubtitle" style="font-size: 0.85rem; color: var(--text-secondary);">Cross-Sector Analytics: Construction & Healthcare Operations</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="btnRefreshDashboard" class="btn btn-secondary btn-sm">
+            🔄 Refresh Data
+          </button>
+          <a href="/worker" target="_blank" class="btn btn-primary btn-sm">
+            ↗ Open Worker View
+          </a>
+        </div>
+      </header>
+
+      <!-- SECTION 1: OVERVIEW & KPIS -->
+      <section id="sectionOverview" class="admin-section" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- KPI Cards Grid -->
+        <div class="kpi-grid">
+          <!-- Card 1 -->
+          <div class="kpi-card">
+            <span class="kpi-title">Today's Attendance</span>
+            <div class="kpi-value" id="kpiAttendance">0</div>
+            <span style="font-size: 0.78rem; color: var(--text-secondary);">Active workers clocked in</span>
+          </div>
+          <!-- Card 2 -->
+          <div class="kpi-card">
+            <span class="kpi-title">Weekly Overtime Hours</span>
+            <div class="kpi-value" id="kpiOvertime" style="color: var(--color-warning);">0.0h</div>
+            <span style="font-size: 0.78rem; color: var(--color-secondary);">Compensated at 2x fair wage</span>
+          </div>
+          <!-- Card 3 -->
+          <div class="kpi-card">
+            <span class="kpi-title">Open Safety Incidents</span>
+            <div class="kpi-value" id="kpiSafety" style="color: var(--color-critical);">0</div>
+            <div id="kpiSafetyBreakdown" style="display: flex; gap: 0.35rem; margin-top: 0.25rem;">
+              <span class="badge badge-critical" id="kpiCritCount">0 Crit</span>
+              <span class="badge badge-warning" id="kpiHighCount">0 High</span>
+            </div>
+          </div>
+          <!-- Card 4 -->
+          <div class="kpi-card">
+            <span class="kpi-title">Avg Anonymous Feedback</span>
+            <div class="kpi-value" id="kpiFeedback" style="color: var(--color-primary);">5.0 / 5</div>
+            <span style="font-size: 0.78rem; color: var(--text-secondary);">100% anonymized worker score</span>
+          </div>
+        </div>
+
+        <!-- Pure SVG Bar Chart: Weekly Hours per Worker with Fatigue Limit -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3 style="font-size: 1.1rem; margin-bottom: 0.2rem;">Weekly Hours per Worker vs. Safe Thresholds</h3>
+              <p style="font-size: 0.8rem; color: var(--text-secondary);">Guarding against excessive shift fatigue under UN SDG 8 (Cap: 60h/week)</p>
+            </div>
+            <div style="display: flex; gap: 1rem; font-size: 0.78rem;">
+              <span style="display: flex; align-items: center; gap: 0.35rem;">
+                <span style="width: 12px; height: 12px; background: #14B8A6; border-radius: 2px;"></span> Standard Hours
+              </span>
+              <span style="display: flex; align-items: center; gap: 0.35rem;">
+                <span style="width: 12px; height: 12px; background: #EF4444; border-radius: 2px;"></span> Fatigue Threshold (&gt;60h)
+              </span>
+            </div>
+          </div>
+
+          <!-- Pure SVG Bar Chart Container -->
+          <div style="width: 100%; overflow-x: auto;">
+            <svg id="workerWeeklyHoursSvg" viewBox="0 0 760 260" style="width: 100%; min-width: 600px; height: 260px;">
+              <!-- Dynamic Bars injected via admin.js -->
+            </svg>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SECTION 2: SAFETY KANBAN QUEUE -->
+      <section id="sectionSafetyKanban" class="admin-section" style="display: none; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="font-size: 1.15rem;">Safety Incident Kanban Queue</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Multi-language reports triage: Critical hazards pinned on top</p>
+          </div>
+          <span class="badge badge-info" id="kanbanTotalBadge">0 Total Reports</span>
+        </div>
+
+        <!-- Kanban Columns -->
+        <div class="kanban-grid">
+          <!-- Column 1: Reported -->
+          <div class="kanban-col" id="colReported">
+            <div class="kanban-col-header">
+              <span style="font-weight: 700; font-size: 0.9rem; color: var(--color-warning);">🚨 Reported (Awaiting Action)</span>
+              <span class="badge badge-warning" id="countReported">0</span>
+            </div>
+            <div class="kanban-cards-wrapper" id="cardsReported"></div>
+          </div>
+
+          <!-- Column 2: Acknowledged -->
+          <div class="kanban-col" id="colAcknowledged">
+            <div class="kanban-col-header">
+              <span style="font-weight: 700; font-size: 0.9rem; color: var(--color-info);">⚙️ Acknowledged (Under Fix)</span>
+              <span class="badge badge-info" id="countAcknowledged">0</span>
+            </div>
+            <div class="kanban-cards-wrapper" id="cardsAcknowledged"></div>
+          </div>
+
+          <!-- Column 3: Resolved -->
+          <div class="kanban-col" id="colResolved">
+            <div class="kanban-col-header">
+              <span style="font-weight: 700; font-size: 0.9rem; color: var(--color-success);">✅ Resolved (Closed)</span>
+              <span class="badge badge-success" id="countResolved">0</span>
+            </div>
+            <div class="kanban-cards-wrapper" id="cardsResolved"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: FATIGUE EARLY WARNING ALERTS -->
+      <section id="sectionFatigueAlerts" class="admin-section" style="display: none; flex-direction: column; gap: 1rem;">
+        <div>
+          <h3 style="font-size: 1.15rem;">Worker Fatigue Early-Warning Engine</h3>
+          <p style="font-size: 0.82rem; color: var(--text-secondary);">Scans shift logs for &gt;10h daily shifts, &gt;60h weekly totals, and &lt;8h recovery rest violations.</p>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Worker</th>
+                <th>Site & Sector</th>
+                <th>Violation Type</th>
+                <th>Measured Value</th>
+                <th>Threshold</th>
+                <th>Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody id="fatigueAlertsTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading fatigue alerts...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 4: ANONYMOUS WORKER VOICE -->
+      <section id="sectionFeedback" class="admin-section" style="display: none; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="font-size: 1.15rem;">Anonymous Worker Feedback & Site Wellbeing</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Retaliation-free shift worker feedback aggregated by facility.</p>
+          </div>
+          <span class="badge badge-success">🔒 Identity 100% Anonymized</span>
+        </div>
+
+        <div id="feedbackSummariesContainer" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <!-- Injected via admin.js -->
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- Real-time Admin Toast Container -->
+  <div id="adminToastContainer" class="toast-container" aria-live="assertive"></div>
+
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>
