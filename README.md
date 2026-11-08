@@ -1,5 +1,5 @@
 # FairShift — UN SDG 8 Decent Work Platform
-
+**Live Demo:** https://fairshift-oely.onrender.com (free tier, pehli load me ~1 min lag sakta hai)
 > **A premium decent-work platform protecting shift workers across Construction and Hospital sectors with transparent 2x overtime compensation, voice-first AI hazard triage, fatigue violation guards, and portable skill passports.**
 
 [![UN SDG 8](https://img.shields.io/badge/UN%20SDG-8%20Decent%20Work-0A97D9.svg)](https://sdgs.un.org/goals/goal8)
