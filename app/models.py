@@ -49,6 +49,10 @@ class SafetyReport(BaseModel):
     status: str = "Reported"  # "Reported" | "Acknowledged" | "Resolved"
     created_at: str
     resolved_at: Optional[str] = None
+    # Round 3: provenance + tamper-evidence (all optional => backward compatible)
+    source: str = "text"  # "text" | "voice" | "photo"
+    prev_hash: Optional[str] = None
+    hash: Optional[str] = None
 
 
 class AnonymousFeedback(BaseModel):
@@ -215,3 +219,19 @@ class KPIStatsResponse(BaseModel):
     safety_by_severity: Dict[str, int]
     avg_feedback_score: float
     total_feedback_count: int
+
+
+# --- Round 3: Wage Theft Detective ---
+class WageCheckRequest(BaseModel):
+    paid_amount: float = Field(..., ge=0, le=10_000_000, description="Amount actually received (INR)")
+
+
+class WageCheckResponse(BaseModel):
+    verdict: str  # "fair" | "underpaid" | "overpaid"
+    expected_net: float
+    paid_amount: float
+    shortfall: float
+    shortfall_percent: float
+    likely_cause: Optional[str] = None
+    legal_note: str
+    breakdown: Dict[str, Any]

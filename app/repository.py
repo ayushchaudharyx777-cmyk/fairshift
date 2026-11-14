@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
+from app.services.integrity import GENESIS_HASH, compute_report_hash
 from app.models import (
     Site, Worker, Shift, SafetyReport, AnonymousFeedback, SkillPassport
 )
@@ -15,6 +16,7 @@ class InMemoryRepository:
         self.workers: Dict[str, Worker] = {}
         self.shifts: Dict[str, Shift] = {}
         self.safety_reports: Dict[str, SafetyReport] = {}
+        self.report_chain: List[str] = []  # report ids in insertion order (hash chain)
         self.feedbacks: List[AnonymousFeedback] = []
         self.passports: Dict[str, SkillPassport] = {}  # keyed by passport token
         self.worker_to_passport: Dict[str, str] = {}  # worker_id -> token
@@ -85,13 +87,22 @@ class InMemoryRepository:
             reverse=False
         )
 
+    def get_report_chain(self) -> List[SafetyReport]:
+        """Reports in the order they were added (for integrity verification)."""
+        return [self.safety_reports[i] for i in self.report_chain if i in self.safety_reports]
+
     def get_safety_report(self, report_id: str) -> Optional[SafetyReport]:
         """Retrieve a single safety report by ID."""
         return self.safety_reports.get(report_id)
 
     def add_safety_report(self, report: SafetyReport) -> None:
         """Add new safety report and broadcast event to SSE listeners."""
+        # Tamper-evident chain: link to the previous report's hash
+        prev = self.safety_reports[self.report_chain[-1]].hash if self.report_chain else GENESIS_HASH
+        report.prev_hash = prev
+        report.hash = compute_report_hash(report, prev)
         self.safety_reports[report.id] = report
+        self.report_chain.append(report.id)
         self.broadcast_event({
             "type": "safety_report_created",
             "report": report.model_dump(),
