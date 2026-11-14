@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.repository import get_repository
 from app.seed import seed_database
+from app.persistence import init_store_from_env, restore_or_bootstrap
 from app.routers import worker, admin, passport
 
 # Configure Structured Logging
@@ -48,6 +49,9 @@ async def lifespan(app: FastAPI):
     # Startup: Seed in-memory database with sites, workers, shifts, reports, and passports
     repo = get_repository()
     seed_database(repo)
+    store = init_store_from_env()
+    persistence_mode = restore_or_bootstrap(repo, store, reset=get_settings().RESET_DB_ON_START) if store else "memory-only"
+    logger.info(json.dumps({"event": "persistence", "mode": persistence_mode}))
     logger.info(json.dumps({
         "event": "startup_complete",
         "sites_count": len(repo.sites),

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     ADMIN_PIN: str = "4821"
     SESSION_SECRET: str = "fairshift-secret-key-keep-it-safe-2026"
     ALLOWED_ORIGINS: str = "*"
+    RESET_DB_ON_START: bool = False  # true => wipe saved data and re-seed fresh demo data on next start
+    DATABASE_URL: str = ""  # empty => in-memory only; e.g. postgresql://... or sqlite:///fairshift.db
 
     model_config = SettingsConfigDict(
         env_file=".env",

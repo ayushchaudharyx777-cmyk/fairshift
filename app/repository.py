@@ -17,11 +17,16 @@ class InMemoryRepository:
         self.shifts: Dict[str, Shift] = {}
         self.safety_reports: Dict[str, SafetyReport] = {}
         self.report_chain: List[str] = []  # report ids in insertion order (hash chain)
+        self.store: Optional[Any] = None  # optional write-through persistence (app.persistence.Store)
         self.feedbacks: List[AnonymousFeedback] = []
         self.passports: Dict[str, SkillPassport] = {}  # keyed by passport token
         self.worker_to_passport: Dict[str, str] = {}  # worker_id -> token
         self._sse_listeners: List[asyncio.Queue] = []
         self._lock = asyncio.Lock()
+
+    def _persist(self, collection: str, obj: Any, seq: int = 0) -> None:
+        if self.store is not None:
+            self.store.upsert(collection, obj.id, obj.model_dump(), seq)
 
     # --- Sites ---
     def get_sites(self) -> List[Site]:
@@ -69,10 +74,12 @@ class InMemoryRepository:
     def add_shift(self, shift: Shift) -> None:
         """Store newly created shift in repository."""
         self.shifts[shift.id] = shift
+        self._persist("shifts", shift)
 
     def update_shift(self, shift: Shift) -> None:
         """Persist updated shift state in repository."""
         self.shifts[shift.id] = shift
+        self._persist("shifts", shift)
 
     # --- Safety Reports ---
     def get_safety_reports(self, site_id: Optional[str] = None) -> List[SafetyReport]:
@@ -103,6 +110,7 @@ class InMemoryRepository:
         report.hash = compute_report_hash(report, prev)
         self.safety_reports[report.id] = report
         self.report_chain.append(report.id)
+        self._persist("safety_reports", report, len(self.report_chain) - 1)
         self.broadcast_event({
             "type": "safety_report_created",
             "report": report.model_dump(),
@@ -112,6 +120,8 @@ class InMemoryRepository:
     def update_safety_report(self, report: SafetyReport) -> None:
         """Update safety report status and broadcast update event."""
         self.safety_reports[report.id] = report
+        if report.id in self.report_chain:
+            self._persist("safety_reports", report, self.report_chain.index(report.id))
         self.broadcast_event({
             "type": "safety_report_updated",
             "report": report.model_dump()
@@ -121,6 +131,7 @@ class InMemoryRepository:
     def add_feedback(self, feedback: AnonymousFeedback) -> None:
         """Persist anonymized feedback record without worker identification."""
         self.feedbacks.append(feedback)
+        self._persist("feedbacks", feedback, len(self.feedbacks) - 1)
         self.broadcast_event({
             "type": "feedback_created",
             "site_id": feedback.site_id,
