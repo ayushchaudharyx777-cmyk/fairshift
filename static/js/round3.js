@@ -28,66 +28,156 @@
     return body;
   }
 
+  // ---------------- i18n (falls back to English if a key is missing) ----------------
+  const EN_FALLBACK = {
+    r3_photo_btn: '📷 Report with Photo (AI)', r3_photo_analyzing: 'AI is analyzing the photo...',
+    r3_photo_too_big: 'Photo too large (max 5 MB).', r3_photo_sent: 'Sent to the site engineer and logged tamper-proof.',
+    r3_photo_fail: 'Could not analyze photo: ',
+    r3_queued: 'No internet. Report saved on your phone and will be sent automatically when you are back online.',
+    r3_pending: 'Pending sync ({n})', r3_synced: 'Offline reports sent ✓',
+    r3_wage_title: '🔍 Wage Theft Check', r3_wage_sub: 'Compare what you were paid with what the law says you should get.',
+    r3_wage_ph: 'Amount you actually received (₹)', r3_wage_btn: 'Check my pay', r3_wage_fair: 'Your pay is fair ✓',
+    r3_wage_under: 'Underpaid by {amt} ({pct}%)', r3_wage_over: 'Paid more than expected',
+    r3_wage_expected: 'Expected take-home: {exp} · You received: {paid}', r3_wage_cause: 'Likely cause: ',
+    r3_wage_invalid: 'Enter a valid amount.', r3_checking: 'Checking...'
+  };
+  let strings = {};
+  const curLang = () => localStorage.getItem('fairshift_lang') || 'en';
+  const t = (k, vars) => {
+    let v = strings[k] || EN_FALLBACK[k] || k;
+    Object.entries(vars || {}).forEach(([a, b]) => { v = v.split('{' + a + '}').join(b); });
+    return v;
+  };
+  async function loadStrings() {
+    try { const r = await fetch('/static/i18n/' + curLang() + '.json'); if (r.ok) strings = await r.json(); }
+    catch (_) { strings = {}; }
+  }
+
+  // ---------------- Offline queue (IndexedDB) for photo reports ----------------
+  const DB_NAME = 'fairshift_r3', STORE = 'pending';
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error('no-idb'));
+      const req = window.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function tx(mode, fn) {
+    return openDb().then((db) => new Promise((resolve, reject) => {
+      const t0 = db.transaction(STORE, mode); const out = fn(t0.objectStore(STORE));
+      t0.oncomplete = () => { db.close(); resolve(out && out.result !== undefined ? out.result : undefined); };
+      t0.onerror = () => { db.close(); reject(t0.error); };
+    }));
+  }
+  const queueAdd = (item) => tx('readwrite', (s) => s.add(item));
+  const queueAll = () => tx('readonly', (s) => s.getAll());
+  const queueDel = (id) => tx('readwrite', (s) => s.delete(id));
+
+  async function postPhoto(blob, lang, note) {
+    const fd = new FormData();
+    fd.append('photo', blob, 'hazard.jpg'); fd.append('language', lang); if (note) fd.append('note', note);
+    return fetch('/api/v1/worker/hazard-photo', { method: 'POST', body: fd });
+  }
+
+  // Sync every queued report. Keeps items on network error / 401 / 5xx; drops items the server permanently rejects.
+  let syncing = false;
+  async function syncQueue(onChange) {
+    if (syncing) return { sent: 0, left: 0 };
+    syncing = true; let sent = 0;
+    try {
+      let items = []; try { items = await queueAll(); } catch (_) { return { sent: 0, left: 0 }; }
+      for (const it of items) {
+        try {
+          const res = await postPhoto(it.blob, it.lang, it.note);
+          if (res.ok || [400, 413, 415, 422].includes(res.status)) { await queueDel(it.id); if (res.ok) sent++; }
+          else break; // 401 / 429 / 5xx: stop and retry later
+        } catch (_) { break; } // still offline
+      }
+      let left = 0; try { left = (await queueAll()).length; } catch (_) { /* ignore */ }
+      if (onChange) onChange(sent, left);
+      return { sent, left };
+    } finally { syncing = false; }
+  }
+
   // ---------------- Worker: photo hazard ----------------
   function initPhoto(slot) {
     const input = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: 'display:none' });
-    const btn = el('button', { class: 'btn btn-secondary', style: 'width:100%; margin-top:0.6rem;', text: '📷 Report with Photo (AI)' });
+    const btn = el('button', { class: 'btn btn-secondary', style: 'width:100%; margin-top:0.6rem;' });
+    const chip = el('div', { style: 'margin-top:0.4rem; font-size:0.8rem; color:#F59E0B; display:none;' });
     const result = el('div', { style: 'margin-top:0.6rem; font-size:0.85rem;' });
+    const label = () => { btn.textContent = t('r3_photo_btn'); };
+    label();
+
+    async function refreshChip(sent) {
+      let n = 0; try { n = (await queueAll()).length; } catch (_) { /* ignore */ }
+      chip.style.display = n ? 'block' : 'none'; chip.textContent = n ? t('r3_pending', { n: n }) : '';
+      if (sent) { result.textContent = t('r3_synced'); }
+    }
     btn.addEventListener('click', () => input.click());
     input.addEventListener('change', async () => {
       const file = input.files && input.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { result.textContent = 'Photo too large (max 5 MB).'; return; }
-      btn.disabled = true; btn.textContent = 'Analyzing photo with AI...'; result.textContent = '';
+      if (file.size > 5 * 1024 * 1024) { result.textContent = t('r3_photo_too_big'); return; }
+      btn.disabled = true; btn.textContent = t('r3_photo_analyzing'); result.textContent = '';
+      const lang = curLang();
       try {
-        const fd = new FormData();
-        fd.append('photo', file);
-        fd.append('language', localStorage.getItem('fairshift_lang') || 'en');
-        const r = await api('/api/v1/worker/hazard-photo', { method: 'POST', body: fd });
-        const lang = localStorage.getItem('fairshift_lang') || 'en';
+        if (navigator.onLine === false) throw new TypeError('offline');
+        const res = await postPhoto(file, lang, '');
+        let body = null; try { body = await res.json(); } catch (_) { /* ignore */ }
+        if (!res.ok) throw new Error((body && (body.error && body.error.message || body.detail)) || ('HTTP ' + res.status));
         result.textContent = '';
-        result.appendChild(el('strong', { text: r.severity.toUpperCase() + ' · ' + r.category.toUpperCase() }));
-        result.appendChild(el('div', { text: lang === 'en' ? r.summary_en : r.summary_local, style: 'margin-top:0.25rem;' }));
-        result.appendChild(el('div', { text: 'Sent to site engineer and logged tamper-proof.', style: 'color:var(--text-secondary); margin-top:0.25rem;' }));
+        result.appendChild(el('strong', { text: body.severity.toUpperCase() + ' · ' + body.category.toUpperCase() }));
+        result.appendChild(el('div', { text: lang === 'en' ? body.summary_en : body.summary_local, style: 'margin-top:0.25rem;' }));
+        result.appendChild(el('div', { text: t('r3_photo_sent'), style: 'color:var(--text-secondary); margin-top:0.25rem;' }));
       } catch (e) {
-        result.textContent = 'Could not analyze photo: ' + e.message;
+        if (e && e.name === 'TypeError') { // network failure => keep the evidence, send later
+          try { await queueAdd({ blob: file, lang: lang, note: '', ts: Date.now() }); result.textContent = t('r3_queued'); }
+          catch (_) { result.textContent = t('r3_photo_fail') + 'storage unavailable'; }
+        } else { result.textContent = t('r3_photo_fail') + e.message; }
       } finally {
-        btn.disabled = false; btn.textContent = '📷 Report with Photo (AI)'; input.value = '';
+        btn.disabled = false; label(); input.value = ''; refreshChip(0);
       }
     });
-    slot.append(input, btn, result);
+    window.addEventListener('online', () => syncQueue((sent) => refreshChip(sent)));
+    slot.append(input, btn, chip, result);
+    refreshChip(0);
+    if (navigator.onLine !== false) syncQueue((sent) => refreshChip(sent));
+    return { relabel: label, refreshChip: refreshChip };
   }
 
   // ---------------- Worker: wage check ----------------
   function initWage(slot) {
-    const amount = el('input', { type: 'number', min: '0', step: '1', inputmode: 'numeric', class: 'input-field', placeholder: 'Amount you actually received (₹)' });
-    const btn = el('button', { class: 'btn btn-primary', style: 'width:100%; margin-top:0.6rem;', text: 'Check my pay' });
+    const amount = el('input', { type: 'number', min: '0', step: '1', inputmode: 'numeric', class: 'input-field' });
+    const btn = el('button', { class: 'btn btn-primary', style: 'width:100%; margin-top:0.6rem;' });
     const out = el('div', { style: 'margin-top:0.75rem;' });
-    const card = el('div', { class: 'card' }, [
-      el('h4', { style: 'font-size:0.95rem; margin-bottom:0.25rem;', text: '🔍 Wage Theft Check' }),
-      el('p', { style: 'font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.6rem;', text: 'Compare what you were paid with what the law says you should get.' }),
-      amount, btn, out,
-    ]);
+    const title = el('h4', { style: 'font-size:0.95rem; margin-bottom:0.25rem;' });
+    const sub = el('p', { style: 'font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.6rem;' });
+    const relabel = () => { title.textContent = t('r3_wage_title'); sub.textContent = t('r3_wage_sub');
+      amount.setAttribute('placeholder', t('r3_wage_ph')); btn.textContent = t('r3_wage_btn'); };
+    relabel();
     btn.addEventListener('click', async () => {
       const v = parseFloat(amount.value);
-      if (!isFinite(v) || v < 0) { out.textContent = 'Enter a valid amount.'; return; }
-      btn.disabled = true; out.textContent = 'Checking...';
+      if (!isFinite(v) || v < 0) { out.textContent = t('r3_wage_invalid'); return; }
+      btn.disabled = true; out.textContent = t('r3_checking');
       try {
         const r = await api('/api/v1/worker/wage-check', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paid_amount: v }),
         });
         const colors = { fair: '#10B981', underpaid: '#EF4444', overpaid: '#F59E0B' };
-        const headline = r.verdict === 'underpaid' ? 'Underpaid by ' + inr(r.shortfall) + ' (' + r.shortfall_percent + '%)'
-          : r.verdict === 'fair' ? 'Your pay is fair ✓' : 'Paid more than expected';
+        const headline = r.verdict === 'underpaid' ? t('r3_wage_under', { amt: inr(r.shortfall), pct: r.shortfall_percent })
+          : r.verdict === 'fair' ? t('r3_wage_fair') : t('r3_wage_over');
         out.textContent = '';
         out.appendChild(el('div', { style: 'font-weight:700; font-size:1.05rem; color:' + colors[r.verdict], text: headline }));
-        out.appendChild(el('div', { style: 'font-size:0.85rem; margin-top:0.25rem;', text: 'Expected take-home: ' + inr(r.expected_net) + ' · You received: ' + inr(r.paid_amount) }));
-        if (r.likely_cause) out.appendChild(el('div', { style: 'font-size:0.85rem; margin-top:0.25rem; color:#F59E0B;', text: 'Likely cause: ' + r.likely_cause }));
+        out.appendChild(el('div', { style: 'font-size:0.85rem; margin-top:0.25rem;', text: t('r3_wage_expected', { exp: inr(r.expected_net), paid: inr(r.paid_amount) }) }));
+        if (r.likely_cause) out.appendChild(el('div', { style: 'font-size:0.85rem; margin-top:0.25rem; color:#F59E0B;', text: t('r3_wage_cause') + r.likely_cause }));
         out.appendChild(el('div', { style: 'font-size:0.72rem; margin-top:0.4rem; color:var(--text-secondary);', text: r.legal_note }));
-      } catch (e) { out.textContent = 'Could not check: ' + e.message; }
+      } catch (e) { out.textContent = e.message; }
       finally { btn.disabled = false; }
     });
-    slot.appendChild(card);
+    slot.appendChild(el('div', { class: 'card' }, [title, sub, amount, btn, out]));
+    return { relabel: relabel };
   }
 
   // ---------------- Admin: integrity + impact ----------------
@@ -137,9 +227,20 @@
     verify(); impact();
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const p = $('r3PhotoSlot'); if (p) initPhoto(p);
-    const w = $('r3WageSlot'); if (w) initWage(w);
+  async function boot() {
+    await loadStrings();
+    const p = $('r3PhotoSlot'); const photo = p ? initPhoto(p) : null;
+    const w = $('r3WageSlot'); const wage = w ? initWage(w) : null;
     const a = $('r3AdminSlot'); if (a) initAdmin(a);
-  });
+    const sel = $('langSelector');
+    if (sel) sel.addEventListener('change', async () => {
+      await loadStrings();
+      if (photo) { photo.relabel(); photo.refreshChip(0); }
+      if (wage) wage.relabel();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+
+  // test hook (no effect in production)
+  window.__fairshiftR3 = { syncQueue: syncQueue, queueAll: queueAll, queueAdd: queueAdd, t: t };
 })();
