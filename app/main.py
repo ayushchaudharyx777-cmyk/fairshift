@@ -87,7 +87,7 @@ async def app_middleware(request: Request, call_next: Any) -> Response:
     client_ip = request.client.host if request.client else "unknown"
 
     # Enforce AI rate limit on compute-heavy endpoints
-    if request.url.path in ["/api/v1/worker/payslip/explain", "/api/v1/worker/safety-reports"] and request.method == "POST":
+    if request.url.path in ["/api/v1/worker/payslip/explain", "/api/v1/worker/safety-reports", "/api/v1/worker/hazard-photo"] and request.method == "POST":
         if not check_rate_limit(client_ip):
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

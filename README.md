@@ -6,7 +6,7 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-1.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![Google Cloud Run](https://img.shields.io/badge/Deploy-Google%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/run)
-[![Tests Passing](https://img.shields.io/badge/Tests-14%2F14%20Passing-10B981.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-28%2F28%20Passing-10B981.svg)]()
 
 ---
 
@@ -199,3 +199,17 @@ gcloud run deploy fairshift \
 - **WCAG AA Compliance**: High-contrast dark and light themes, minimum 48px touch targets, visible focus rings, full keyboard accessibility.
 - **Multilingual Support**: English, Hindi (हिंदी), and Tamil (தமிழ்) with dynamic `<html lang>` updates and full i18n JSON bundles.
 - **Security**: PBKDF2 with SHA-256 password hashing (100,000 iterations), signed HttpOnly session cookies, CSP and security headers, strict IP rate limiting on AI endpoints, and zero storage of worker identity with feedback.
+
+---
+
+## Round 3 Additions
+
+| Feature | Endpoint | Notes |
+| :--- | :--- | :--- |
+| **Photo Hazard Detection** (Gemini Vision) | `POST /api/v1/worker/hazard-photo` | Magic-byte validation, 5 MB cap, enum-sanitised output, graceful fallback if AI is down |
+| **Wage Theft Detective** | `POST /api/v1/worker/wage-check` | Compares paid vs legal net pay; flags patterns such as OT paid at 1x |
+| **Tamper-Proof Safety Log** | `GET /api/v1/admin/integrity-check` | SHA-256 hash chain; editing or deleting a report is detected |
+| **Impact Calculator** | `GET /api/v1/admin/impact?workers=N&theft_rate=r` | Illustrative model, every assumption returned in the response |
+| **CI** | `.github/workflows/ci.yml` | pytest on every push |
+
+Run tests: `pytest -q` (28 tests).

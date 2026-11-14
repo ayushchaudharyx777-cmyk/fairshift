@@ -17,6 +17,7 @@ def seed_database(repo: InMemoryRepository) -> None:
     repo.workers.clear()
     repo.shifts.clear()
     repo.safety_reports.clear()
+    repo.report_chain.clear()
     repo.feedbacks.clear()
     repo.passports.clear()
     repo.worker_to_passport.clear()

@@ -1,11 +1,12 @@
 import secrets
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File, Form
 from app.models import (
     WorkerLoginRequest, WorkerLoginResponse, Shift, CheckInRequest, CheckOutRequest,
     SafetyReportCreateRequest, SafetyReport, AnonymousFeedback, AnonymousFeedbackCreateRequest,
-    ExplainPayslipRequest, ExplainPayslipResponse, Payslip, SkillPassport, FatigueAlert
+    ExplainPayslipRequest, ExplainPayslipResponse, Payslip, SkillPassport, FatigueAlert,
+    WageCheckRequest, WageCheckResponse
 )
 from app.repository import InMemoryRepository, get_repository
 from app.security import (
@@ -13,7 +14,8 @@ from app.security import (
 )
 from app.services.payroll import calculate_shift_hours, generate_payslip
 from app.services.fatigue import check_worker_fatigue
-from app.services.ai import triage_safety_report, explain_payslip
+from app.services.ai import triage_safety_report, explain_payslip, analyze_hazard_photo
+from app.services.wagecheck import check_wage_theft
 
 router = APIRouter(prefix="/api/v1/worker", tags=["Worker API"])
 
@@ -296,3 +298,78 @@ async def get_worker_fatigue_status(
     site = repo.get_site(worker.site_id)
     shifts = repo.get_shifts(worker_id=worker.id)
     return check_worker_fatigue(worker, site, shifts)
+
+
+# ---------------------------------------------------------------------------
+# Round 3 additions
+# ---------------------------------------------------------------------------
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
+
+
+def _sniff_image_mime(data: bytes) -> str | None:
+    """Detect real image type from magic bytes (never trust the client's content-type)."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+@router.post("/hazard-photo", response_model=SafetyReport)
+async def submit_hazard_photo(
+    photo: UploadFile = File(...),
+    language: str = Form("en"),
+    note: str = Form(""),
+    worker_id: str = Depends(get_current_worker_id),
+    repo: InMemoryRepository = Depends(get_repository)
+) -> SafetyReport:
+    """Report a hazard by photo. Gemini Vision triages it into the same Kanban/SSE flow as voice reports."""
+    data = await photo.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(status_code=413, detail="Photo too large (max 5 MB)")
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty upload")
+    mime = _sniff_image_mime(data)
+    if not mime:
+        raise HTTPException(status_code=415, detail="Only JPEG, PNG or WebP images are accepted")
+    lang = language if language in ("en", "hi", "ta") else "en"
+
+    worker = repo.get_worker(worker_id)
+    triage = await analyze_hazard_photo(data, mime, lang)
+    note_clean = note.strip()[:300]
+    label = "[Photo report]" + (f" {note_clean}" if note_clean else "")
+
+    report = SafetyReport(
+        id=f"rep-{secrets.token_hex(4)}",
+        site_id=worker.site_id,
+        worker_id=worker.id,
+        worker_name=worker.name,
+        input_text=label,
+        category=triage["category"],
+        severity=triage["severity"],
+        summary_en=triage["summary_en"],
+        summary_local=triage["summary_local"],
+        status="Reported",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        source="photo",
+    )
+    repo.add_safety_report(report)
+    return report
+
+
+@router.post("/wage-check", response_model=WageCheckResponse)
+async def wage_check(
+    payload: WageCheckRequest,
+    worker_id: str = Depends(get_current_worker_id),
+    repo: InMemoryRepository = Depends(get_repository)
+) -> WageCheckResponse:
+    """Compare the amount the worker actually received with the legally expected net pay."""
+    worker = repo.get_worker(worker_id)
+    site = repo.get_site(worker.site_id)
+    shifts = repo.get_shifts(worker_id=worker.id)
+    now = datetime.now(timezone.utc)
+    payslip = generate_payslip(worker, site, shifts,
+                               (now - timedelta(days=14)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
+    return check_wage_theft(payslip, payload.paid_amount)

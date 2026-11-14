@@ -15,6 +15,8 @@ from app.security import (
     create_admin_session_token, require_admin_auth, verify_admin_session_token
 )
 from app.services.fatigue import detect_fatigue_alerts
+from app.services.integrity import verify_chain
+from app.services.impact import estimate_impact
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin API"])
 
@@ -304,3 +306,31 @@ async def sse_event_stream(
             repo.unsubscribe_events(event_queue)
 
     return EventSourceResponse(event_generator())
+
+
+# ---------------------------------------------------------------------------
+# Round 3 additions
+# ---------------------------------------------------------------------------
+@router.get("/integrity-check")
+async def integrity_check(
+    authorized: bool = Depends(require_admin_auth),
+    repo: InMemoryRepository = Depends(get_repository)
+) -> Dict[str, Any]:
+    """Verify the tamper-evident hash chain over all safety reports."""
+    return verify_chain(repo.get_report_chain())
+
+
+@router.get("/impact")
+async def impact_estimate(
+    workers: int = 1000,
+    theft_rate: float = 0.3,
+    authorized: bool = Depends(require_admin_auth),
+    repo: InMemoryRepository = Depends(get_repository)
+) -> Dict[str, Any]:
+    """Scale seeded OT patterns to N workers: illustrative impact model with explicit assumptions."""
+    workers = max(1, min(workers, 10_000_000))
+    theft_rate = max(0.0, min(theft_rate, 1.0))
+    all_workers = repo.get_workers()
+    shifts = repo.get_shifts()
+    alerts = detect_fatigue_alerts(all_workers, repo.get_sites(), shifts)
+    return estimate_impact(all_workers, repo.get_sites(), shifts, len(alerts), workers, theft_rate)
