@@ -7,7 +7,8 @@ const { IDBFactory } = require('fake-indexeddb');
 
 const SRC = fs.readFileSync(path.join(__dirname, '../../static/js/round3.js'), 'utf8');
 const I18N = (l) => JSON.parse(fs.readFileSync(path.join(__dirname, `../../static/i18n/${l}.json`), 'utf8'));
-const HTML = `<body><select id="langSelector"><option value="en">en</option><option value="hi">hi</option><option value="ta">ta</option></select>
+const LANGS = fs.readdirSync(path.join(__dirname, '../../static/i18n')).filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''));
+const HTML = `<body><select id="langSelector">${LANGS.map((l) => `<option value="${l}">${l}</option>`).join('')}</select>
 <div id="r3PhotoSlot"></div><div id="r3WageSlot"></div><div id="r3AdminSlot"></div></body>`;
 const tick = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 const jsonRes = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -170,4 +171,43 @@ test('admin: integrity badge shows Verified, and TAMPERING when chain is broken'
   integrity = { valid: false, checked: 2, broken_report_id: 'rep-002', reason: 'content hash mismatch (report was modified)' };
   [...p.doc.querySelectorAll('#r3AdminSlot button')].find((b) => /Verify/.test(b.textContent)).click(); await tick(60);
   assert.match(text(p, '#r3AdminSlot'), /TAMPERING DETECTED/); assert.match(text(p, '#r3AdminSlot'), /rep-002/);
+});
+
+
+test('i18n: all languages (at least 8 beyond English) render wage + photo UI from their own bundle', async () => {
+  assert.ok(LANGS.length >= 8, `expected >=8 bundles, got ${LANGS.length}`);
+  for (const l of LANGS) {
+    const b = I18N(l);
+    const p = await page({ lang: l });
+    assert.equal(text(p, '#r3WageSlot h4'), b.r3_wage_title, `${l} wage title`);
+    assert.equal(p.doc.querySelector('#r3PhotoSlot button').textContent, b.r3_photo_btn, `${l} photo button`);
+    assert.equal(p.doc.querySelector('#r3WageSlot input').getAttribute('placeholder'), b.r3_wage_ph, `${l} placeholder`);
+    assert.equal(p.doc.querySelector('#r3WageSlot button').textContent, b.r3_wage_btn, `${l} wage button`);
+  }
+});
+
+test('i18n: live-switching through every language never leaves stale text', async () => {
+  const p = await page({ lang: 'en' });
+  for (const l of LANGS) {
+    p.w.localStorage.setItem('fairshift_lang', l);
+    p.doc.querySelector('#langSelector').dispatchEvent(new p.w.Event('change')); await tick(40);
+    assert.equal(text(p, '#r3WageSlot h4'), I18N(l).r3_wage_title, `after switching to ${l}`);
+  }
+});
+
+test('i18n: placeholders ({amt},{pct},{exp},{paid},{n}) are substituted in every language', async () => {
+  for (const l of LANGS) {
+    const p = await page({ lang: l, routes: { 'POST /api/v1/worker/wage-check': jsonRes(200, WAGE('underpaid', { cause: 'x' })) } });
+    await check(p, '15000');
+    const t = text(p, '#r3WageSlot');
+    assert.doesNotMatch(t, /\{(amt|pct|exp|paid)\}/, `${l} left a raw placeholder`);
+    assert.match(t, /₹1,736/, `${l} amount missing`);
+  }
+});
+
+test('i18n: missing key in a bundle falls back to English instead of showing the raw key', async () => {
+  const dom = await page({ lang: 'hi' });
+  const t = dom.w.__fairshiftR3.t;
+  assert.equal(t('r3_does_not_exist'), 'r3_does_not_exist');        // unknown key => visible, not crash
+  assert.match(t('r3_pending', { n: 3 }), /3/);
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fairshift-v2';
+const CACHE_NAME = 'fairshift-v3';
 const ASSETS_TO_CACHE = [
   '/worker',
   '/static/css/tokens.css',
@@ -7,6 +7,12 @@ const ASSETS_TO_CACHE = [
   '/static/i18n/en.json',
   '/static/i18n/hi.json',
   '/static/i18n/ta.json',
+  '/static/i18n/bn.json',
+  '/static/i18n/te.json',
+  '/static/i18n/mr.json',
+  '/static/i18n/kn.json',
+  '/static/i18n/ml.json',
+  '/static/i18n/gu.json',
   '/static/icons/icon-192.svg'
 ];
 

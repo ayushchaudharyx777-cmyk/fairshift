@@ -16,6 +16,7 @@ from app.services.payroll import calculate_shift_hours, generate_payslip
 from app.services.fatigue import check_worker_fatigue
 from app.services.ai import triage_safety_report, explain_payslip, analyze_hazard_photo
 from app.services.wagecheck import check_wage_theft
+from app.languages import normalize as normalize_language, speech_tag
 
 router = APIRouter(prefix="/api/v1/worker", tags=["Worker API"])
 
@@ -197,8 +198,7 @@ async def explain_worker_payslip(
     payslip = generate_payslip(worker, site, shifts, (now - timedelta(days=14)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
 
     explanation = await explain_payslip(payslip.model_dump(), payload.language)
-    speech_lang_map = {"en": "en-IN", "hi": "hi-IN", "ta": "ta-IN"}
-    speech_lang = speech_lang_map.get(payload.language, "en-IN")
+    speech_lang = speech_tag(payload.language)
 
     return ExplainPayslipResponse(
         explanation=explanation,
@@ -334,7 +334,7 @@ async def submit_hazard_photo(
     mime = _sniff_image_mime(data)
     if not mime:
         raise HTTPException(status_code=415, detail="Only JPEG, PNG or WebP images are accepted")
-    lang = language if language in ("en", "hi", "ta") else "en"
+    lang = normalize_language(language)
 
     worker = repo.get_worker(worker_id)
     triage = await analyze_hazard_photo(data, mime, lang)

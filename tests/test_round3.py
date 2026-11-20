@@ -1,4 +1,3 @@
-import io
 import pytest
 from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
@@ -150,3 +149,13 @@ def test_impact_scales_linearly_and_exposes_assumptions():
     assert b["estimated_annual_wage_protected_inr"] == pytest.approx(2 * a["estimated_annual_wage_protected_inr"], rel=0.01)
     assert "theft_rate_assumed" in a["assumptions"]
     assert c.get("/api/v1/admin/impact?workers=-5&theft_rate=9").status_code == 200  # clamped, no crash
+
+
+def test_photo_endpoint_is_rate_limited_like_other_ai_endpoints():
+    c = worker_client()
+    codes = []
+    for i in range(32):
+        r = c.post("/api/v1/worker/hazard-photo",
+                   files={"photo": ("a.jpg", JPEG + str(i).encode(), "image/jpeg")})
+        codes.append(r.status_code)
+    assert codes[:30] == [200] * 30 and codes[30] == 429

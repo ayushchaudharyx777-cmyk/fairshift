@@ -7,6 +7,7 @@ Persistence failures are logged and never break a request.
 """
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, delete, func, select, update
@@ -17,6 +18,17 @@ from app.models import AnonymousFeedback, SafetyReport, Shift
 logger = logging.getLogger("fairshift.persistence")
 
 COLLECTIONS = ("shifts", "safety_reports", "feedbacks")
+
+# All DB writes run on ONE background thread: request handlers never wait on (possibly remote) database
+# latency, and a single worker keeps writes strictly ordered (hash-chain order is preserved).
+# At interpreter exit Python joins this pool, so already-queued writes still complete.
+_WRITER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fs-persist")
+
+
+def flush(timeout: float = 30.0) -> None:
+    """Block until every queued write has been executed (used before reads, tests and shutdown)."""
+    _WRITER.submit(lambda: None).result(timeout=timeout)
+
 
 
 def normalize_url(url: str) -> str:
@@ -42,6 +54,11 @@ class Store:
         md.create_all(self.engine)
 
     def upsert(self, collection: str, rec_id: str, data: Dict[str, Any], seq: int = 0) -> bool:
+        """Queue a write; returns immediately. Failures are logged by the writer thread."""
+        _WRITER.submit(self._upsert_now, collection, rec_id, data, seq)
+        return True
+
+    def _upsert_now(self, collection: str, rec_id: str, data: Dict[str, Any], seq: int = 0) -> bool:
         payload = json.dumps(data, ensure_ascii=False, default=str)
         try:
             with self.engine.begin() as conn:
@@ -58,6 +75,7 @@ class Store:
             return False
 
     def load(self, collection: str) -> List[Dict[str, Any]]:
+        flush()
         with self.engine.connect() as conn:
             rows = conn.execute(
                 select(self.records.c.data).where(self.records.c.collection == collection).order_by(self.records.c.seq)
@@ -65,6 +83,7 @@ class Store:
         return [json.loads(r[0]) for r in rows]
 
     def count(self, collection: Optional[str] = None) -> int:
+        flush()
         with self.engine.connect() as conn:
             q = select(func.count()).select_from(self.records)
             if collection:
@@ -72,6 +91,7 @@ class Store:
             return int(conn.execute(q).scalar() or 0)
 
     def wipe(self) -> None:
+        flush()
         with self.engine.begin() as conn:
             conn.execute(delete(self.records))
 
