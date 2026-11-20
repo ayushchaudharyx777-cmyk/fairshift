@@ -151,7 +151,15 @@ def test_impact_scales_linearly_and_exposes_assumptions():
     assert c.get("/api/v1/admin/impact?workers=-5&theft_rate=9").status_code == 200  # clamped, no crash
 
 
-def test_photo_endpoint_is_rate_limited_like_other_ai_endpoints():
+def test_photo_endpoint_is_rate_limited_like_other_ai_endpoints(monkeypatch):
+    # The limiter is a 60s rolling window. Stub Gemini so every request returns instantly; a real call
+    # with an invalid or slow key (401 + retry) lets early requests age out of the window before the 31st.
+    from app.services import ai
+
+    async def offline(prompt, image=None):
+        raise RuntimeError("offline test stub")
+
+    monkeypatch.setattr(ai, "_execute_gemini_call", offline)
     c = worker_client()
     codes = []
     for i in range(32):
