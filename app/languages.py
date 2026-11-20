@@ -48,6 +48,16 @@ def prompt_label(code: str) -> str:
     return f"{lang.english} ({lang.code})"
 
 
+# Unicode range covering all Indic scripts used by the non-English languages (Devanagari U+0900 .. Malayalam U+0D7F).
+# Latin text and symbols such as ₹ (U+20B9) fall outside it.
+_INDIC_RANGE = (0x0900, 0x0DFF)
+
+
+def has_native_script(text: str) -> bool:
+    """True if the text contains at least one character from an Indic script (used to reject English replies)."""
+    return any(_INDIC_RANGE[0] <= ord(ch) <= _INDIC_RANGE[1] for ch in text)
+
+
 # Offline / AI-down fallback texts for languages that have no hand-written branch in ai.py (hi, ta, en keep theirs).
 # Placeholders: triage -> {category} {severity}; payslip -> {name} {reg} {base} {ot_h} {ot_pay} {ded} {net}
 FALLBACKS: Dict[str, Dict[str, str]] = {

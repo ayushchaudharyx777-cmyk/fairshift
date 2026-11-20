@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fairshift-v3';
+const CACHE_NAME = 'fairshift-v5';
 const ASSETS_TO_CACHE = [
   '/worker',
   '/static/css/tokens.css',

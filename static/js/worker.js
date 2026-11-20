@@ -20,6 +20,8 @@
 
   // DOM Elements
   const langSelector = document.getElementById('langSelector');
+  const explainLangSelector = document.getElementById('explainLangSelector');
+  const safetyLangSelector = document.getElementById('safetyLangSelector');
   const workerThemeToggle = document.getElementById('workerThemeToggle');
   const workerLogoutBtn = document.getElementById('workerLogoutBtn');
   const viewLogin = document.getElementById('viewLogin');
@@ -139,10 +141,22 @@
     }
 
     if (langSelector) langSelector.value = currentLang;
+    if (explainLangSelector) explainLangSelector.value = currentLang;
+    if (safetyLangSelector) safetyLangSelector.value = currentLang;
   }
 
   langSelector.addEventListener('change', (e) => {
     loadTranslations(e.target.value);
+  });
+
+  // Section pickers (payslip explain + safety report): same language list as the header selector
+  [explainLangSelector, safetyLangSelector].forEach((sel) => {
+    if (!sel) return;
+    sel.innerHTML = langSelector.innerHTML;
+    sel.value = currentLang;
+    sel.addEventListener('change', (e) => {
+      loadTranslations(e.target.value);
+    });
   });
 
   // --- 2. Theme Toggle ---
@@ -760,12 +774,17 @@
       top.appendChild(catBadge);
       top.appendChild(sevBadge);
 
+      // Worker's own language first (bold) when it is not English; English follows as the reference line
+      const localFirst = currentLang !== 'en';
+      const primaryStyle = 'font-size: 0.88rem; color: var(--text-primary); font-weight: 600;';
+      const secondaryStyle = 'font-size: 0.8rem; color: var(--text-secondary);';
+
       const pEn = document.createElement('p');
-      pEn.style.cssText = 'font-size: 0.88rem; color: var(--text-primary); font-weight: 600;';
+      pEn.style.cssText = localFirst ? secondaryStyle : primaryStyle;
       pEn.textContent = r.summary_en;
 
       const pLoc = document.createElement('p');
-      pLoc.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary);';
+      pLoc.style.cssText = localFirst ? primaryStyle : secondaryStyle;
       pLoc.textContent = r.summary_local;
 
       const foot = document.createElement('div');
@@ -783,8 +802,8 @@
       foot.appendChild(timeSpan);
 
       card.appendChild(top);
-      card.appendChild(pEn);
-      card.appendChild(pLoc);
+      card.appendChild(localFirst ? pLoc : pEn);
+      card.appendChild(localFirst ? pEn : pLoc);
       card.appendChild(foot);
       safetyReportsContainer.appendChild(card);
     });

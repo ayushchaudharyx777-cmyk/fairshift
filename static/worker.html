@@ -246,6 +246,9 @@
           </div>
 
           <!-- AI Explanation Trigger & Speech Reader -->
+          <div style="display: flex; width: 100%; margin-top: 0.5rem;">
+            <select id="explainLangSelector" class="select-lang" aria-label="Language for payslip explanation"></select>
+          </div>
           <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;">
             <button id="btnExplainPayslip" class="btn btn-primary" style="flex: 1;">
               <span>✨</span> <span id="i18n-explain-btn">Explain in My Language</span>
@@ -285,7 +288,10 @@
         <div class="card" style="text-align: center;">
           <h3 id="i18n-safety-title" style="font-size: 1.2rem; margin-bottom: 0.25rem;">Voice Safety Incident Reporting</h3>
           <p id="i18n-safety-subtitle" style="font-size: 0.85rem;">Speak in your native language (English, Hindi, Tamil) or type below</p>
-          
+
+          <!-- Language for this report: same list as the header selector -->
+          <select id="safetyLangSelector" class="select-lang" aria-label="Language for safety report" style="margin-bottom: 0.75rem;"></select>
+
           <!-- Glowing Animated Voice Orb -->
           <div class="voice-orb-container">
             <button id="voiceOrbBtn" class="voice-orb idle" aria-label="Tap glowing orb to record safety report by voice">

@@ -5,7 +5,7 @@ import re
 from typing import Dict, Any, Optional
 from google import genai
 from app.config import get_settings
-from app.languages import FALLBACKS, prompt_label
+from app.languages import DEFAULT_LANGUAGE, FALLBACKS, has_native_script, normalize, prompt_label
 
 logger = logging.getLogger("fairshift.ai")
 
@@ -195,6 +195,9 @@ CRITICAL: Return ONLY valid JSON, with NO surrounding markdown commentary.
             result["severity"] = "medium"
         if result["category"] not in ["ppe", "hazard", "equipment", "fatigue", "sanitation", "other"]:
             result["category"] = "hazard"
+        # Same guard as payslips: a non-English request must come back in its script, else use the native fallback sentence.
+        if normalize(language) != DEFAULT_LANGUAGE and not has_native_script(result["summary_local"]):
+            result["summary_local"] = fallback_safety_triage(text, language)["summary_local"]
 
         _put_in_cache(cache_key, result)
         return result
@@ -242,6 +245,9 @@ Guidelines:
     try:
         explanation = await _execute_gemini_call(prompt)
         explanation = explanation.strip()
+        # Gemini sometimes answers in English even when asked for Tamil/Hindi/etc.; reject that and use the native fallback.
+        if normalize(language) != DEFAULT_LANGUAGE and not has_native_script(explanation):
+            raise ValueError(f"reply not in requested script ({language})")
         _put_in_cache(cache_key, explanation)
         return explanation
     except Exception as exc:
