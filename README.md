@@ -212,4 +212,6 @@ gcloud run deploy fairshift \
 | **Impact Calculator** | `GET /api/v1/admin/impact?workers=N&theft_rate=r` | Illustrative model, every assumption returned in the response |
 | **CI** | `.github/workflows/ci.yml` | pytest on every push |
 
-Run tests: `pytest -q` (28 tests).
+**9 languages** (English, Hindi, Tamil, Bengali, Telugu, Marathi, Kannada, Malayalam, Gujarati): UI, AI prompts, offline fallbacks and voice, all driven by `app/languages.py`.
+
+Run tests: `pytest -q` (99 backend tests) and `cd tests/ui && npm install && npm test` (16 UI tests).

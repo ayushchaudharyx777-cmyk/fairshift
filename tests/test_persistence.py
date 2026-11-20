@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-import pytest
 from app.repository import InMemoryRepository
 from app.seed import seed_database
 from app.models import SafetyReport, AnonymousFeedback
-from app.persistence import Store, normalize_url, restore_or_bootstrap, init_store_from_env
+from app.persistence import Store, flush, normalize_url, restore_or_bootstrap, init_store_from_env
 from app.services.integrity import verify_chain
 
 
@@ -57,7 +56,7 @@ def test_tampering_in_database_is_detected_after_restore(tmp_path):
     import json
     from sqlalchemy import update
     url = f"sqlite:///{tmp_path/'fs.db'}"
-    repo1 = fresh_repo(); st = Store(url); restore_or_bootstrap(repo1, st)
+    repo1 = fresh_repo(); st = Store(url); restore_or_bootstrap(repo1, st); flush()
     victim = repo1.get_report_chain()[1]
     d = victim.model_dump(); d["severity"] = "low"           # attacker edits the DB row directly
     with st.engine.begin() as c:
@@ -68,10 +67,11 @@ def test_tampering_in_database_is_detected_after_restore(tmp_path):
 
 
 def test_db_failure_never_breaks_request_path(tmp_path):
-    repo = fresh_repo(); st = Store(f"sqlite:///{tmp_path/'fs.db'}"); restore_or_bootstrap(repo, st)
+    repo = fresh_repo(); st = Store(f"sqlite:///{tmp_path/'fs.db'}"); restore_or_bootstrap(repo, st); flush()
     st.engine.dispose()
     st.records.drop(st.engine)              # simulate DB losing its table mid-flight
     repo.add_safety_report(new_report())    # must not raise
+    flush()                                 # the failing write happens (and is only logged) here
     assert repo.get_safety_report("rep-new1") is not None
 
 
@@ -102,3 +102,28 @@ def test_reset_flag_wipes_saved_data_and_reseeds(tmp_path):
     assert r2.get_safety_report("rep-new1") is None
     r3 = fresh_repo(); assert restore_or_bootstrap(r3, Store(url)) == "restored"
     assert r3.get_safety_report("rep-new1") is None and verify_chain(r3.get_report_chain())["valid"]
+
+
+def test_slow_database_does_not_block_requests_and_order_is_kept(tmp_path):
+    import time
+    st = Store(f"sqlite:///{tmp_path/'fs.db'}")
+    repo = fresh_repo(); restore_or_bootstrap(repo, st); flush()
+    real = st._upsert_now
+    order = []
+
+    def slow(collection, rec_id, data, seq=0):
+        time.sleep(0.15)                     # simulate a laggy remote Postgres
+        order.append(rec_id)
+        return real(collection, rec_id, data, seq)
+
+    st._upsert_now = slow
+    t0 = time.perf_counter()
+    for i in range(4):
+        repo.add_safety_report(new_report(f"rep-slow{i}"))
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.3, f"request path blocked on the database ({elapsed:.2f}s)"   # 4 x 0.15s would be 0.6s
+    flush()
+    assert order == [f"rep-slow{i}" for i in range(4)]                               # strictly ordered
+    r2 = fresh_repo(); restore_or_bootstrap(r2, Store(f"sqlite:///{tmp_path/'fs.db'}"))
+    assert all(r2.get_safety_report(f"rep-slow{i}") for i in range(4))
+    assert verify_chain(r2.get_report_chain())["valid"] is True

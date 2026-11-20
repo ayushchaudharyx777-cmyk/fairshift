@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+from app.languages import LANGUAGE_PATTERN
 from pydantic import BaseModel, Field
 
 
@@ -202,7 +203,7 @@ class AnonymousFeedbackCreateRequest(BaseModel):
 
 
 class ExplainPayslipRequest(BaseModel):
-    language: str = Field("en", pattern="^(en|hi|ta)$")
+    language: str = Field("en", pattern=LANGUAGE_PATTERN)
 
 
 class ExplainPayslipResponse(BaseModel):

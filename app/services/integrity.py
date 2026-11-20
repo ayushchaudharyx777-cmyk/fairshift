@@ -7,7 +7,7 @@ deleting the report content itself does.
 """
 import hashlib
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 GENESIS_HASH = "0" * 64
 

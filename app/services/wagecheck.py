@@ -1,7 +1,7 @@
 """Wage Theft Detective: compare what a worker was actually paid with the legal payslip."""
 from typing import Optional
 from app.models import Payslip, WageCheckResponse
-from app.services.rules import get_sector_rule
+from app.services.rules import ESI_PERCENTAGE, get_sector_rule
 
 TOLERANCE_INR = 1.0  # ignore rounding differences
 
@@ -18,10 +18,10 @@ def _likely_cause(payslip: Payslip, shortfall: float, multiplier: float) -> Opti
     if payslip.overtime_hours > 0:
         # OT paid at 1x instead of the legal multiplier loses (m-1)/m of the OT pay
         ot_premium_lost = payslip.overtime_pay * (multiplier - 1) / multiplier
-        ot_premium_lost_net = ot_premium_lost * (1 - 0.0075)  # ESI is on gross
+        ot_premium_lost_net = ot_premium_lost * (1 - ESI_PERCENTAGE)  # ESI is on gross
         if abs(shortfall - ot_premium_lost_net) <= max(50.0, 0.05 * shortfall):
             return f"Overtime looks paid at 1x instead of {multiplier:.0f}x"
-        if abs(shortfall - payslip.overtime_pay * (1 - 0.0075)) <= max(50.0, 0.05 * shortfall):
+        if abs(shortfall - payslip.overtime_pay * (1 - ESI_PERCENTAGE)) <= max(50.0, 0.05 * shortfall):
             return "Overtime hours look unpaid"
     if payslip.pf_deduction > 0 and abs(shortfall - payslip.pf_deduction) <= 50.0:
         return "PF may have been deducted twice or not credited"

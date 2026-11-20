@@ -49,13 +49,16 @@ graph TD
 | GET | `/api/v1/admin/stream` | admin | SSE live alerts |
 | GET | `/api/v1/passport/{token}` | public | Verifiable passport |
 
-## 5. Design decisions
+## 5. Languages (9)
+English, Hindi, Tamil, Bengali, Telugu, Marathi, Kannada, Malayalam, Gujarati. `app/languages.py` is the single source of truth (code, native name, English name for AI prompts, BCP-47 speech tag, offline fallback texts). It drives API validation, Gemini prompts ("write in <language>, native script"), AI-down fallbacks, speech tags and the dropdown. **To add a language:** add it to `app/languages.py`, create `static/i18n/<code>.json`, add an `<option>` in `static/worker.html`, the JSON to `static/sw.js` and the tag to `SPEECH_LANG` in `static/js/worker.js`. `tests/test_languages.py` fails if any step is missed (key parity, placeholders, real native script, dropdown, service-worker cache, speech tags). Translations for the six newer languages are first-pass and should be reviewed by native speakers before a real deployment.
+
+## 5b. Design decisions
 - **Tamper-evident log:** each report stores `prev_hash` and `hash = SHA-256(prev_hash | canonical content)`. Workflow fields (status) are excluded so resolving a card never breaks the chain; editing or deleting content does. Verified again after DB restore.
 - **Resilient AI:** every Gemini call has a 10 s timeout, one retry, a cache and a labelled fallback, so a demo never fails on API errors. Model output is validated against enums before use.
 - **Safe uploads:** file type is detected from magic bytes (client content-type is ignored), 5 MB cap, JPEG/PNG/WebP only.
 - **Offline-first reporting:** failed or offline photo reports are stored in IndexedDB and auto-synced; permanent rejections (400/413/415/422) are dropped, transient ones (401/429/5xx/network) retried.
 - **Privacy:** anonymous feedback stores no worker ID; UI renders server text with `textContent` only (no `innerHTML`).
-- **Persistence never blocks a request:** DB errors are logged, not raised; unreachable DB at startup falls back to in-memory.
+- **Persistence never blocks a request:** writes go through one ordered background thread (slow remote Postgres cannot stall API/SSE); DB errors are logged, not raised; unreachable DB at startup falls back to in-memory; queued writes finish on shutdown.
 
 ## 6. Deployment
 1. Render → Docker web service from `main`.
@@ -64,7 +67,7 @@ graph TD
 4. Health check: `GET /health`.
 
 ## 7. Testing
-`pytest -q` runs backend tests (rules, payroll, fatigue, security, hash chain, photo, wage check, impact, persistence incl. restart + DB-tamper detection). `cd tests/ui && npm test` runs UI tests (offline queue, i18n en/hi/ta, XSS safety, admin badge).
+`pytest -q` (99 tests) runs backend tests (rules, payroll, fatigue, security, hash chain, photo, wage check, impact, persistence incl. restart + DB-tamper detection). `cd tests/ui && npm test` (16 tests) runs UI tests (offline queue, i18n for all 9 languages, XSS safety, admin badge).
 
 ## 8. Known limitations / future scope
 Persistence is a JSON-document mirror (fine for demo scale; a normalised schema is next). Admin uses a shared PIN (role-based JWT planned). Overtime consent capture and quarterly OT cap are planned (see `LABOUR_LAW_MAPPING.md`). Pilot with a contractor/NGO to validate wage-check on real payslips.

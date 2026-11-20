@@ -78,6 +78,9 @@
     }, 4000);
   }
 
+  // BCP-47 tags for browser speech APIs (keep in sync with app/languages.py; tests/test_languages.py enforces it)
+  const SPEECH_LANG = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN', bn: 'bn-IN', te: 'te-IN', mr: 'mr-IN', kn: 'kn-IN', ml: 'ml-IN', gu: 'gu-IN' };
+
   // --- 1. i18n Localization ---
   async function loadTranslations(lang) {
     try {
@@ -596,8 +599,7 @@
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const langMap = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN' };
-    utterance.lang = langMap[currentLang] || 'en-IN';
+    utterance.lang = SPEECH_LANG[currentLang] || 'en-IN';
     utterance.rate = 0.95;
 
     const stopBtn = document.getElementById('btnStopSpeech');
@@ -624,8 +626,7 @@
     const rec = new SpeechRec();
     rec.continuous = false;
     rec.interimResults = true;
-    const langMap = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN' };
-    rec.lang = langMap[currentLang] || 'en-IN';
+    rec.lang = SPEECH_LANG[currentLang] || 'en-IN';
 
     rec.onstart = () => {
       isListening = true;

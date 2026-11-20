@@ -244,7 +244,7 @@ async def get_feedback_summary(
                 })
 
     results = []
-    for sid, data in by_site.items():
+    for data in by_site.values():
         count = data["total_reviews"]
         if count > 0:
             data["avg_manager"] = round(data["avg_manager"] / count, 1)

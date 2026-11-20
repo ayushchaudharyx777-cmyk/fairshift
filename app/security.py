@@ -1,5 +1,4 @@
 import hashlib
-import os
 import secrets
 from typing import Optional
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
