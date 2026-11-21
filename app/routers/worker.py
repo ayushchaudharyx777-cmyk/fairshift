@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File, Form
+from pydantic import BaseModel
 from app.models import (
     WorkerLoginRequest, WorkerLoginResponse, Shift, CheckInRequest, CheckOutRequest,
     SafetyReportCreateRequest, SafetyReport, AnonymousFeedback, AnonymousFeedbackCreateRequest,
@@ -424,3 +425,4 @@ async def career_advice(
         language=normalize_language(payload.language),
     )
     return CareerAdviceResponse(**result)
+
