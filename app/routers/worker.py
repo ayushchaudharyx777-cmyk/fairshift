@@ -392,3 +392,35 @@ async def speak(
     except TTSUnavailable:
         raise HTTPException(status_code=503, detail="Voice service unavailable right now") from None
     return Response(content=wav, media_type="audio/wav", headers={"Cache-Control": "private, max-age=3600"})
+
+
+# ---------------------------------------------------------------------------
+# Career Advice — Gemini-powered job path suggestions
+# ---------------------------------------------------------------------------
+class CareerAdviceRequest(BaseModel):
+    language: str = "en"
+
+
+class CareerAdviceResponse(BaseModel):
+    suggestions: List[str]
+    skill_summary: str
+    ai_source: str
+
+
+@router.post("/career-advice", response_model=CareerAdviceResponse)
+async def career_advice(
+    payload: CareerAdviceRequest,
+    worker_id: str = Depends(get_current_worker_id),
+    repo: InMemoryRepository = Depends(get_repository),
+) -> CareerAdviceResponse:
+    """Return 3 AI-suggested job advancement paths based on the worker's skill passport."""
+    from app.services.ai import get_career_advice
+    passport = repo.get_passport_by_worker(worker_id)
+    if not passport:
+        raise HTTPException(status_code=404, detail="Skill passport not found")
+    result = await get_career_advice(
+        skills=passport.skills,
+        role=passport.role,
+        language=normalize_language(payload.language),
+    )
+    return CareerAdviceResponse(**result)

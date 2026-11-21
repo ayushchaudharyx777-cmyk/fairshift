@@ -272,6 +272,15 @@
 
         <div id="r3WageSlot"></div>
 
+        <!-- Evidence PDF Download (shown after wage check runs) -->
+        <div id="evidencePdfSection" style="display:none;" class="card">
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">📄 Legal Evidence Document</div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.6rem;">Download a tamper-evident PDF of your wage theft analysis for official complaints or labour court.</p>
+          <button id="btnDownloadEvidence" class="btn btn-primary" style="width:100%;">
+            ⬇️ Download Wage Theft Evidence PDF
+          </button>
+        </div>
+
         <!-- Line Item Breakdown Cards -->
         <div class="card">
           <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;" id="i18n-line-items">Itemized Statutory Earnings & Deductions</h4>
@@ -360,13 +369,32 @@
             </div>
           </div>
 
+          <!-- QR Code Section -->
+          <div id="passportQrSection" style="display:none; text-align:center; padding: 0.5rem 0;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.5rem;">📱 Scan to Verify Credentials</div>
+            <div id="passportQrCode" style="display:inline-block; background:#fff; padding:8px; border-radius:8px;"></div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.35rem;">Contractor scans this to verify your skills instantly</div>
+          </div>
+
+          <!-- AI Career Advice Section -->
+          <div id="careerAdviceSection" style="border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.25rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-primary); font-weight: 700; margin-bottom: 0.4rem;">🤖 AI Career Advice</div>
+            <button id="btnCareerAdvice" class="btn btn-secondary" style="width:100%; margin-bottom:0.5rem;">
+              ✨ What jobs can I apply for with my skills?
+            </button>
+            <div id="careerAdviceResult" style="display:none; font-size:0.85rem;"></div>
+          </div>
+
           <!-- Share Actions -->
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-            <button id="btnSharePassport" class="btn btn-primary" style="flex: 1;">
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button id="btnSharePassport" class="btn btn-primary" style="flex: 1; min-width: 120px;">
               🔗 <span id="i18n-share-passport">Share Passport</span>
             </button>
-            <button id="btnCopyPassportLink" class="btn btn-secondary" style="flex: 1;">
+            <button id="btnCopyPassportLink" class="btn btn-secondary" style="flex: 1; min-width: 120px;">
               📋 <span id="i18n-copy-link">Copy Public Link</span>
+            </button>
+            <button id="btnToggleQr" class="btn btn-secondary" style="flex: 1; min-width: 120px;">
+              📱 Show QR Code
             </button>
           </div>
         </div>
@@ -475,6 +503,8 @@
 
   </div>
 
+  <!-- QR Code library for Skill Passport verification -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/static/js/worker.js"></script>
   <script src="/static/js/round3.js"></script>
 </body>

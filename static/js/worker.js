@@ -970,6 +970,8 @@
 
   // --- 9. Skill Passport ---
   let currentPassportToken = null;
+  let _qrInstance = null;
+  let _qrVisible = false;
 
   async function loadPassportData() {
     try {
@@ -985,6 +987,14 @@
   }
 
   function renderPassport(p) {
+    // Reset QR state whenever passport data refreshes
+    _qrInstance = null;
+    _qrVisible = false;
+    const qrSection = document.getElementById('passportQrSection');
+    if (qrSection) { qrSection.style.display = 'none'; document.getElementById('passportQrCode').textContent = ''; }
+    const toggleQrBtn = document.getElementById('btnToggleQr');
+    if (toggleQrBtn) toggleQrBtn.textContent = '📱 Show QR Code';
+
     document.getElementById('passportAvatar').textContent = p.avatar_initials;
     document.getElementById('passportWorkerName').textContent = p.worker_name;
     document.getElementById('passportRole').textContent = p.role;
@@ -1058,6 +1068,199 @@
       showToast('Passport URL', url);
     }
   }
+
+  // ── QR Code for Skill Passport ──────────────────────────────────────────
+  document.getElementById('btnToggleQr').addEventListener('click', () => {
+    const section = document.getElementById('passportQrSection');
+    _qrVisible = !_qrVisible;
+    document.getElementById('btnToggleQr').textContent = _qrVisible ? '📱 Hide QR Code' : '📱 Show QR Code';
+    if (_qrVisible) {
+      section.style.display = 'block';
+      if (!_qrInstance && currentPassportToken) {
+        const passportUrl = `${window.location.origin}/passport/${currentPassportToken}`;
+        const container = document.getElementById('passportQrCode');
+        container.textContent = '';
+        try {
+          _qrInstance = new QRCode(container, {
+            text: passportUrl,
+            width: 160,
+            height: 160,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M,
+          });
+        } catch (e) {
+          container.textContent = passportUrl;
+        }
+      }
+    } else {
+      section.style.display = 'none';
+    }
+  });
+
+  // ── Gemini Career Advice ─────────────────────────────────────────────────
+  document.getElementById('btnCareerAdvice').addEventListener('click', async () => {
+    const btn = document.getElementById('btnCareerAdvice');
+    const result = document.getElementById('careerAdviceResult');
+    btn.disabled = true;
+    btn.textContent = '⏳ Asking Gemini AI…';
+    result.style.display = 'none';
+    result.textContent = '';
+    try {
+      const r = await fetch('/api/v1/worker/career-advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: currentLang || 'en' }),
+        credentials: 'include',
+      });
+      if (!r.ok) throw new Error('Server error ' + r.status);
+      const data = await r.json();
+      result.style.display = 'block';
+      result.textContent = '';
+
+      const src = data.ai_source === 'gemini' ? '🤖 Gemini AI' : '📋 Offline Suggestions';
+      const header = document.createElement('div');
+      header.style.cssText = 'font-weight:700; color:var(--color-primary); margin-bottom:0.5rem;';
+      header.textContent = src + ' — Career Paths for You';
+      result.appendChild(header);
+
+      if (data.skill_summary) {
+        const summary = document.createElement('div');
+        summary.style.cssText = 'font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.5rem;';
+        summary.textContent = data.skill_summary;
+        result.appendChild(summary);
+      }
+
+      (data.suggestions || []).forEach((s, i) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:0.4rem 0.5rem; margin-bottom:0.35rem; background:var(--bg-card); border-radius:6px; border-left:3px solid var(--color-primary);';
+        item.textContent = `${i + 1}. ${s}`;
+        result.appendChild(item);
+      });
+    } catch (e) {
+      result.style.display = 'block';
+      result.textContent = 'Could not load career advice. Please try again.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✨ What jobs can I apply for with my skills?';
+    }
+  });
+
+  // ── Evidence PDF Download (Wage Theft Report) ────────────────────────────
+  // Stores the last wage-check result to embed in PDF
+  let _lastWageCheckResult = null;
+
+  // We hook into the wage check API call in round3.js by wrapping the fetch.
+  // A cleaner approach: listen for a custom event dispatched after wage check.
+  // We patch this via a MutationObserver on the r3WageSlot to detect result.
+  (function patchWageCheckForPdf() {
+    // After round3.js runs initWage(), we find the button via mutation
+    const slot = document.getElementById('r3WageSlot');
+    if (!slot) return;
+    const obs = new MutationObserver(() => {
+      const btn = slot.querySelector('button');
+      if (btn && !btn._pdfPatched) {
+        btn._pdfPatched = true;
+        const original = btn.onclick;
+        btn.addEventListener('click', () => {
+          // After a small delay, check if result appeared and store data
+          setTimeout(() => {
+            const out = slot.querySelector('div[style*="margin-top:0.75rem"]') ||
+                        slot.querySelector('.card > div:last-child');
+            if (out && out.textContent.length > 10) {
+              _lastWageCheckResult = {
+                text: out.innerText || out.textContent,
+                timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                worker: document.getElementById('passportWorkerName')?.textContent || 'Worker',
+                role: document.getElementById('passportRole')?.textContent || '',
+                site: document.getElementById('passportSite')?.textContent || '',
+              };
+              document.getElementById('evidencePdfSection').style.display = 'block';
+            }
+          }, 2500);
+        }, { once: false });
+        obs.disconnect();
+      }
+    });
+    obs.observe(slot, { childList: true, subtree: true });
+  })();
+
+  document.getElementById('btnDownloadEvidence').addEventListener('click', () => {
+    const d = _lastWageCheckResult;
+    const workerName = d?.worker || document.getElementById('passportWorkerName')?.textContent || 'Worker';
+    const role = d?.role || document.getElementById('passportRole')?.textContent || '';
+    const site = d?.site || document.getElementById('passportSite')?.textContent || '';
+    const timestamp = d?.timestamp || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const analysisText = d?.text || 'Wage check result not available.';
+
+    // Build printable HTML document
+    const printWin = window.open('', '_blank', 'width=800,height=900');
+    if (!printWin) {
+      showToast('Pop-up blocked', 'Please allow pop-ups to download the PDF.', true);
+      return;
+    }
+    printWin.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FairShift Wage Theft Evidence — ${workerName}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; color: #111; background: #fff; }
+    h1 { color: #0d9488; font-size: 1.4rem; border-bottom: 2px solid #0d9488; padding-bottom: 8px; }
+    h2 { font-size: 1.1rem; margin-top: 24px; color: #374151; }
+    .meta { font-size: 0.85rem; color: #6b7280; margin-bottom: 20px; }
+    .box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 12px 0; white-space: pre-wrap; font-size: 0.92rem; line-height: 1.6; }
+    .badge { display: inline-block; background: #0d9488; color: #fff; border-radius: 4px; padding: 2px 10px; font-size: 0.75rem; margin-bottom: 4px; }
+    .footer { margin-top: 40px; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+    .warning { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; font-size: 0.82rem; margin-top: 16px; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <h1>🏛️ FairShift Wage Theft Evidence Report</h1>
+  <div class="meta">
+    <strong>Generated:</strong> ${timestamp} IST &nbsp;|&nbsp;
+    <strong>Platform:</strong> FairShift (UN SDG 8 Decent Work) &nbsp;|&nbsp;
+    <strong>Report ID:</strong> FS-${Date.now().toString(36).toUpperCase()}
+  </div>
+
+  <span class="badge">OFFICIAL EVIDENCE DOCUMENT</span>
+
+  <h2>Worker Information</h2>
+  <div class="box"><strong>Name:</strong> ${workerName}
+<strong>Role:</strong> ${role}
+<strong>Site/Employer:</strong> ${site}</div>
+
+  <h2>Wage Analysis Result</h2>
+  <div class="box">${analysisText}</div>
+
+  <h2>Legal Reference</h2>
+  <div class="box">• Minimum Wages Act, 1948 — Employer must pay minimum notified wages
+• Payment of Wages Act, 1936 — Wages must be paid on time, without unauthorized deductions
+• Contract Labour (Regulation & Abolition) Act, 1970 — Protects contract workers
+• Employees' Provident Funds and Miscellaneous Provisions Act, 1952 — PF deduction compliance
+
+This document can be submitted to:
+  — Labour Commissioner Office (file complaint under Minimum Wages Act)
+  — Inspector of Factories / Building & Other Construction Workers Act
+  — National Human Rights Commission (NHRC) if employer is unresponsive</div>
+
+  <div class="warning">
+    ⚠️ This report is generated by FairShift's automated wage analysis engine based on statutory minimum wage
+    rates and shift data. It is an evidentiary aid and should be reviewed by a legal professional before
+    formal proceedings.
+  </div>
+
+  <div class="footer">
+    FairShift — Decent Work Platform | UN SDG 8 | Tamper-evident analysis | Generated at ${timestamp}
+    <br/>This document was digitally generated and can be verified at your FairShift worker portal.
+  </div>
+</body>
+</html>`);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); }, 500);
+  });
 
   // Register PWA Service Worker
   if ('serviceWorker' in navigator) {
