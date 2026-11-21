@@ -5,8 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PORT: int = 8080
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_TTS_MODEL: str = "gemini-2.5-flash-preview-tts"
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_TTS_MODEL: str = "gemini-2.0-flash-preview-tts"
     GEMINI_TTS_VOICE: str = "Kore"
     ADMIN_PIN: str = "4821"
     SESSION_SECRET: str = "fairshift-secret-key-keep-it-safe-2026"
