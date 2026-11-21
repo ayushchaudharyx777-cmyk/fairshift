@@ -6,7 +6,7 @@ from app.models import (
     WorkerLoginRequest, WorkerLoginResponse, Shift, CheckInRequest, CheckOutRequest,
     SafetyReportCreateRequest, SafetyReport, AnonymousFeedback, AnonymousFeedbackCreateRequest,
     ExplainPayslipRequest, ExplainPayslipResponse, Payslip, SkillPassport, FatigueAlert,
-    WageCheckRequest, WageCheckResponse
+    WageCheckRequest, WageCheckResponse, SpeakRequest
 )
 from app.repository import InMemoryRepository, get_repository
 from app.security import (
@@ -14,7 +14,8 @@ from app.security import (
 )
 from app.services.payroll import calculate_shift_hours, generate_payslip
 from app.services.fatigue import check_worker_fatigue
-from app.services.ai import triage_safety_report, explain_payslip, analyze_hazard_photo
+from app.services.ai import triage_safety_report, explain_payslip_ex, analyze_hazard_photo
+from app.services.tts import TTSUnavailable, synthesize_wav
 from app.services.wagecheck import check_wage_theft
 from app.languages import normalize as normalize_language, speech_tag
 
@@ -197,13 +198,14 @@ async def explain_worker_payslip(
     now = datetime.now(timezone.utc)
     payslip = generate_payslip(worker, site, shifts, (now - timedelta(days=14)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
 
-    explanation = await explain_payslip(payslip.model_dump(), payload.language)
+    explanation, source = await explain_payslip_ex(payslip.model_dump(), payload.language)
     speech_lang = speech_tag(payload.language)
 
     return ExplainPayslipResponse(
         explanation=explanation,
         language=payload.language,
-        speech_lang=speech_lang
+        speech_lang=speech_lang,
+        source=source
     )
 
 
@@ -232,7 +234,9 @@ async def submit_safety_report(
         summary_en=triage["summary_en"],
         summary_local=triage["summary_local"],
         status="Reported",
-        created_at=datetime.now(timezone.utc).isoformat()
+        created_at=datetime.now(timezone.utc).isoformat(),
+        language=normalize_language(lang),
+        ai_source=triage.get("ai_source", "fallback"),
     )
     repo.add_safety_report(report)
     return report
@@ -354,6 +358,8 @@ async def submit_hazard_photo(
         status="Reported",
         created_at=datetime.now(timezone.utc).isoformat(),
         source="photo",
+        language=lang,
+        ai_source=triage.get("ai_source", "fallback"),
     )
     repo.add_safety_report(report)
     return report
@@ -373,3 +379,16 @@ async def wage_check(
     payslip = generate_payslip(worker, site, shifts,
                                (now - timedelta(days=14)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
     return check_wage_theft(payslip, payload.paid_amount)
+
+
+@router.post("/speak")
+async def speak(
+    payload: SpeakRequest,
+    worker_id: str = Depends(get_current_worker_id),
+) -> Response:
+    """Spoken audio (WAV) for the given text, used when the device has no voice for the language."""
+    try:
+        wav = await synthesize_wav(payload.text, payload.language)
+    except TTSUnavailable:
+        raise HTTPException(status_code=503, detail="Voice service unavailable right now") from None
+    return Response(content=wav, media_type="audio/wav", headers={"Cache-Control": "private, max-age=3600"})

@@ -83,5 +83,21 @@
   "r3_wage_expected": "எதிர்பார்க்கப்படும் கையில் கிடைக்கும் ஊதியம்: {exp} · உங்களுக்கு கிடைத்தது: {paid}",
   "r3_wage_cause": "சாத்தியமான காரணம்: ",
   "r3_wage_invalid": "சரியான தொகையை உள்ளிடவும்.",
-  "r3_checking": "சரிபார்க்கிறது..."
+  "r3_checking": "சரிபார்க்கிறது...",
+  "cat_ppe": "பாதுகாப்பு உபகரணம்",
+  "cat_hazard": "ஆபத்து",
+  "cat_equipment": "உபகரணம்",
+  "cat_fatigue": "சோர்வு",
+  "cat_sanitation": "சுகாதாரம்",
+  "cat_other": "மற்றவை",
+  "sev_low": "குறைவு",
+  "sev_medium": "நடுத்தரம்",
+  "sev_high": "அதிகம்",
+  "sev_critical": "மிக ஆபத்து",
+  "status_label": "நிலை",
+  "ai_badge_live": "🤖 Gemini கண்ணியமான வேலை உதவியாளர்",
+  "ai_badge_offline": "📴 ஆஃப்லைன் மாதிரி (AI கிடைக்கவில்லை)",
+  "voice_unavailable": "இந்த சாதனத்தில் இந்த மொழிக்கான குரல் கிடைக்கவில்லை.",
+  "voice_generating": "குரல் தயாராகிறது...",
+  "explain_generating": "விளக்கம் தயாராகிறது..."
 }

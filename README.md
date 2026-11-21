@@ -214,4 +214,4 @@ gcloud run deploy fairshift \
 
 **9 languages** (English, Hindi, Tamil, Bengali, Telugu, Marathi, Kannada, Malayalam, Gujarati): UI, AI prompts, offline fallbacks and voice, all driven by `app/languages.py`.
 
-Run tests: `pytest -q` (99 backend tests) and `cd tests/ui && npm install && npm test` (16 UI tests).
+Run tests: `pytest -q` (127 backend tests) and `cd tests/ui && npm install && npm test` (33 UI tests).

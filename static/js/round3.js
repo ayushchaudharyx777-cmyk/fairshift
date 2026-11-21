@@ -42,7 +42,8 @@
     r3_wage_invalid: 'Enter a valid amount.', r3_checking: 'Checking...'
   };
   let strings = {};
-  const curLang = () => localStorage.getItem('fairshift_lang') || 'en';
+  let activeLang = localStorage.getItem('fairshift_lang') || 'en';
+  const curLang = () => activeLang;
   const t = (k, vars) => {
     let v = strings[k] || EN_FALLBACK[k] || k;
     Object.entries(vars || {}).forEach(([a, b]) => { v = v.split('{' + a + '}').join(b); });
@@ -51,6 +52,18 @@
   async function loadStrings() {
     try { const r = await fetch('/static/i18n/' + curLang() + '.json'); if (r.ok) strings = await r.json(); }
     catch (_) { strings = {}; }
+  }
+  // Switch language. The value comes from the event/selector itself (worker.js writes localStorage only AFTER its
+  // own fetch finishes, so reading storage here made these cards lag one language behind). Out-of-order loads are dropped.
+  let langSeq = 0;
+  async function setLang(code, relabelAll) {
+    const mine = ++langSeq;
+    activeLang = code;
+    let next = {};
+    try { const r = await fetch('/static/i18n/' + code + '.json'); if (r.ok) next = await r.json(); } catch (_) { /* keep English fallback */ }
+    if (mine !== langSeq) return;
+    strings = next;
+    relabelAll();
   }
 
   // ---------------- Offline queue (IndexedDB) for photo reports ----------------
@@ -211,11 +224,44 @@
       try {
         const r = await api('/api/v1/admin/impact?workers=' + slider.value + '&theft_rate=' + (rate.value / 100));
         big.textContent = inr(r.estimated_annual_wage_protected_inr) + ' / year';
-        sub.textContent = 'overtime premium protected for ' + r.workers_affected.toLocaleString('en-IN') + ' workers · ' + r.fatigue_alerts_per_100_workers + ' fatigue alerts per 100 workers today';
+        sub.textContent = 'overtime premium protected for ' + r.workers_affected.toLocaleString('en-IN') + ' workers · ' + r.workers_at_fatigue_risk_percent + '% of current workers at fatigue risk';
         assume.textContent = 'Illustrative model. ' + r.assumptions.basis + '. ' + r.assumptions.model;
       } catch (e) { big.textContent = 'Unavailable'; }
     }
     [slider, rate].forEach((s) => s.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(impact, 150); }));
+
+    const aiBadge = el('span', { class: 'badge badge-info', text: 'AI: checking...' });
+    const aiDetail = el('div', { style: 'font-size:0.75rem; color:var(--text-secondary); margin-top:0.35rem;' });
+    const aiBtn = el('button', { class: 'btn btn-secondary btn-sm', text: 'Test AI now' });
+    async function aiStatus() {
+      try {
+        const r = await api('/api/v1/admin/ai-status');
+        if (!r.configured) {
+          aiBadge.className = 'badge badge-critical'; aiBadge.textContent = 'AI: NOT CONFIGURED (offline templates)';
+          aiDetail.textContent = 'Add GEMINI_API_KEY in Render > Environment, then redeploy.'; return;
+        }
+        const bad = r.error_count > 0 && (!r.last_ok_at || (r.last_error_at && r.last_error_at > r.last_ok_at));
+        aiBadge.className = 'badge ' + (bad ? 'badge-warning' : 'badge-success');
+        aiBadge.textContent = bad ? 'AI: key set, last call FAILED' : 'AI: Gemini configured ✓';
+        aiDetail.textContent = 'Model ' + r.model + ' · ok ' + r.ok_count + ' · errors ' + r.error_count + ' · offline fallbacks ' + r.fallback_count + (r.last_error ? ' · last error: ' + r.last_error : '');
+      } catch (e) { aiBadge.textContent = 'AI: status unavailable'; }
+    }
+    aiBtn.addEventListener('click', async () => {
+      aiBtn.disabled = true; aiDetail.textContent = 'Calling Gemini...';
+      try {
+        const r = await api('/api/v1/admin/ai-selftest', { method: 'POST' });
+        aiBadge.className = 'badge ' + (r.ok ? 'badge-success' : 'badge-critical');
+        aiBadge.textContent = r.ok ? 'AI: LIVE ✓ ' + r.latency_ms + ' ms' : 'AI: FAILED';
+        aiDetail.textContent = r.ok ? 'Gemini (' + r.model + ') answered in ' + r.latency_ms + ' ms.' : (r.error || 'Unknown error');
+      } catch (e) { aiBadge.className = 'badge badge-critical'; aiBadge.textContent = 'AI: FAILED'; aiDetail.textContent = e.message; }
+      finally { aiBtn.disabled = false; }
+    });
+
+    slot.appendChild(el('div', { class: 'card' }, [
+      el('div', { style: 'display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;' }, [
+        el('div', {}, [el('h3', { style: 'font-size:1.05rem;', text: '🤖 Gemini AI Status' }), aiDetail]), aiBadge, aiBtn]),
+    ]));
+    aiStatus();
 
     slot.appendChild(el('div', { class: 'card' }, [
       el('div', { style: 'display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;' }, [
@@ -232,15 +278,16 @@
     const p = $('r3PhotoSlot'); const photo = p ? initPhoto(p) : null;
     const w = $('r3WageSlot'); const wage = w ? initWage(w) : null;
     const a = $('r3AdminSlot'); if (a) initAdmin(a);
-    const sel = $('langSelector');
-    if (sel) sel.addEventListener('change', async () => {
-      await loadStrings();
+    const relabelAll = () => {
       if (photo) { photo.relabel(); photo.refreshChip(0); }
       if (wage) wage.relabel();
-    });
+    };
+    document.querySelectorAll('select.select-lang, #langSelector').forEach((sel) =>
+      sel.addEventListener('change', (e) => setLang(e.target.value, relabelAll)));
+    window.addEventListener('fairshift:langchange', (e) => { if (e.detail && e.detail.lang !== activeLang) setLang(e.detail.lang, relabelAll); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 
   // test hook (no effect in production)
-  window.__fairshiftR3 = { syncQueue: syncQueue, queueAll: queueAll, queueAdd: queueAdd, t: t };
+  window.__fairshiftR3 = { syncQueue: syncQueue, queueAll: queueAll, queueAdd: queueAdd, t: t, setLang: setLang };
 })();

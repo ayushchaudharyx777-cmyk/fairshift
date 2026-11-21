@@ -42,10 +42,13 @@ graph TD
 | POST | `/api/v1/worker/safety-reports` | worker | Voice/text hazard triage |
 | POST | `/api/v1/worker/hazard-photo` | worker | **Photo hazard (Gemini Vision)** |
 | POST | `/api/v1/worker/wage-check` | worker | **Compare paid vs legal pay** |
+| POST | `/api/v1/worker/speak` | worker | **Gemini text-to-speech (WAV) when the device has no voice** |
 | GET | `/api/v1/worker/fatigue` · `/passport` | worker | Fatigue alerts, skill passport |
 | GET | `/api/v1/admin/overview` · `/fatigue-alerts` · `/safety-kanban` | admin | Dashboards |
 | GET | `/api/v1/admin/integrity-check` | admin | **Verify hash chain** |
 | GET | `/api/v1/admin/impact?workers=N&theft_rate=r` | admin | **Impact model with stated assumptions** |
+| GET | `/api/v1/admin/ai-status` | admin | **Is Gemini configured; ok / error / fallback counters** |
+| POST | `/api/v1/admin/ai-selftest` | admin | **One real Gemini call; ok, latency, error** |
 | GET | `/api/v1/admin/stream` | admin | SSE live alerts |
 | GET | `/api/v1/passport/{token}` | public | Verifiable passport |
 
@@ -54,6 +57,7 @@ English, Hindi, Tamil, Bengali, Telugu, Marathi, Kannada, Malayalam, Gujarati. `
 
 ## 5b. Design decisions
 - **Tamper-evident log:** each report stores `prev_hash` and `hash = SHA-256(prev_hash | canonical content)`. Workflow fields (status) are excluded so resolving a card never breaks the chain; editing or deleting content does. Verified again after DB restore.
+- **Honest AI:** every AI result carries a `source` (`gemini` / `fallback`); fallbacks are never cached, so a transient failure cannot stick; the admin dashboard shows live status. See `AI_TESTING.md`.
 - **Resilient AI:** every Gemini call has a 10 s timeout, one retry, a cache and a labelled fallback, so a demo never fails on API errors. Model output is validated against enums before use.
 - **Safe uploads:** file type is detected from magic bytes (client content-type is ignored), 5 MB cap, JPEG/PNG/WebP only.
 - **Offline-first reporting:** failed or offline photo reports are stored in IndexedDB and auto-synced; permanent rejections (400/413/415/422) are dropped, transient ones (401/429/5xx/network) retried.
@@ -62,12 +66,12 @@ English, Hindi, Tamil, Bengali, Telugu, Marathi, Kannada, Malayalam, Gujarati. `
 
 ## 6. Deployment
 1. Render → Docker web service from `main`.
-2. Env vars: `GEMINI_API_KEY`, `ADMIN_PIN`, `SESSION_SECRET`, optional `DATABASE_URL` (Neon/Supabase Postgres, e.g. `postgresql://user:pass@host/db`).
+2. Env vars: `GEMINI_API_KEY` (optional `GEMINI_MODEL`, `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE`), `ADMIN_PIN`, `SESSION_SECRET`, optional `DATABASE_URL` (Neon/Supabase Postgres, e.g. `postgresql://user:pass@host/db`).
 3. Without `DATABASE_URL` the app runs in memory (demo data re-seeded on each start).
 4. Health check: `GET /health`.
 
 ## 7. Testing
-`pytest -q` (99 tests) runs backend tests (rules, payroll, fatigue, security, hash chain, photo, wage check, impact, persistence incl. restart + DB-tamper detection). `cd tests/ui && npm test` (16 tests) runs UI tests (offline queue, i18n for all 9 languages, XSS safety, admin badge).
+`pytest -q` (127 tests) runs backend tests (rules, payroll, fatigue, security, hash chain, photo, wage check, impact, persistence incl. restart + DB-tamper detection). `cd tests/ui && npm test` (33 tests) runs UI tests (offline queue, i18n for all 9 languages, XSS safety, admin badge).
 
 ## 8. Known limitations / future scope
 Persistence is a JSON-document mirror (fine for demo scale; a normalised schema is next). Admin uses a shared PIN (role-based JWT planned). Overtime consent capture and quarterly OT cap are planned (see `LABOUR_LAW_MAPPING.md`). Pilot with a contractor/NGO to validate wage-check on real payslips.

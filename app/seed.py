@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from app.languages import detect_language
 from app.models import (
     Site, Worker, Shift, SafetyReport, AnonymousFeedback, SkillPassport,
     TrainingRecord, PastEmployer, ExperienceItem
@@ -224,6 +225,8 @@ def seed_database(repo: InMemoryRepository) -> None:
                 severity=sev,
                 summary_en=sum_en,
                 summary_local=sum_loc,
+                language=detect_language(sum_loc),
+                ai_source="manual",
                 status=status,
                 created_at=created,
                 resolved_at=(now - timedelta(days=1)).isoformat() if status == "Resolved" else None

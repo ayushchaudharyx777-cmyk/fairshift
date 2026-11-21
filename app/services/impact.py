@@ -6,7 +6,7 @@ from app.services.rules import get_sector_rule
 
 
 def estimate_impact(workers: List[Worker], sites: List[Site], shifts: List[Shift],
-                    fatigue_alert_count: int, scale_workers: int, theft_rate: float) -> Dict[str, Any]:
+                    workers_at_fatigue_risk: int, scale_workers: int, theft_rate: float) -> Dict[str, Any]:
     site_by_id = {s.id: s for s in sites}
     done = [s for s in shifts if s.status == "completed" and s.end_time]
     n_workers = max(1, len(workers))
@@ -38,7 +38,7 @@ def estimate_impact(workers: List[Worker], sites: List[Site], shifts: List[Shift
         "estimated_annual_wage_protected_inr": round(wage_protected, 0),
         "annual_loss_per_underpaid_worker_inr": round(annual_loss_per_underpaid_worker, 0),
         "workers_affected": round(affected),
-        "fatigue_alerts_per_100_workers": round(fatigue_alert_count / n_workers * 100, 1),
+        "workers_at_fatigue_risk_percent": round(min(workers_at_fatigue_risk, n_workers) / n_workers * 100, 1),
         "assumptions": {
             "basis": f"Seeded demo data: {len(done)} completed shifts across {n_workers} workers, ~{weeks:.1f} weeks",
             "ot_hours_per_worker_per_week": round(ot_hours_per_worker_week, 2),

@@ -83,5 +83,21 @@
   "r3_wage_expected": "Expected take-home: {exp} · You received: {paid}",
   "r3_wage_cause": "Likely cause: ",
   "r3_wage_invalid": "Enter a valid amount.",
-  "r3_checking": "Checking..."
+  "r3_checking": "Checking...",
+  "cat_ppe": "PPE",
+  "cat_hazard": "Hazard",
+  "cat_equipment": "Equipment",
+  "cat_fatigue": "Fatigue",
+  "cat_sanitation": "Sanitation",
+  "cat_other": "Other",
+  "sev_low": "Low",
+  "sev_medium": "Medium",
+  "sev_high": "High",
+  "sev_critical": "Critical",
+  "status_label": "Status",
+  "ai_badge_live": "🤖 Gemini Decent-Work Assistant",
+  "ai_badge_offline": "📴 Offline template (AI unavailable)",
+  "voice_unavailable": "Voice for this language is not available on this device.",
+  "voice_generating": "Preparing voice...",
+  "explain_generating": "Generating explanation..."
 }

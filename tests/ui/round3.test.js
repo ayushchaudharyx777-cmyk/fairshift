@@ -142,7 +142,7 @@ test('i18n: Hindi and Tamil strings render, and switching language relabels live
   const p = await page({ lang: 'hi' });
   assert.match(text(p, '#r3WageSlot'), /वेतन जांच/);
   assert.match(text(p, '#r3PhotoSlot'), /फोटो से रिपोर्ट करें/);
-  localStorage_set(p, 'ta'); p.doc.querySelector('#langSelector').dispatchEvent(new p.w.Event('change')); await tick(60);
+  const sel = p.doc.querySelector('#langSelector'); sel.value = 'ta'; sel.dispatchEvent(new p.w.Event('change')); await tick(60);
   assert.match(text(p, '#r3WageSlot'), /ஊதிய சரிபார்ப்பு/);
   assert.match(text(p, '#r3PhotoSlot'), /புகைப்படத்துடன்/);
 });
@@ -162,7 +162,7 @@ test('i18n: every r3_ key exists in en/hi/ta with the same placeholders', () => 
 
 test('admin: integrity badge shows Verified, and TAMPERING when chain is broken', async () => {
   const ok = { valid: true, checked: 7, head_hash: 'a'.repeat(64) };
-  const impact = { estimated_annual_wage_protected_inr: 8330766, workers_affected: 300, fatigue_alerts_per_100_workers: 12.5,
+  const impact = { estimated_annual_wage_protected_inr: 8330766, workers_affected: 300, workers_at_fatigue_risk_percent: 37.5,
     assumptions: { basis: 'Seeded demo data', model: 'Assumption, not a statistic.' } };
   let integrity = ok;
   const p = await page({ routes: { 'GET /api/v1/admin/integrity-check': () => jsonRes(200, integrity), 'GET /api/v1/admin/impact': jsonRes(200, impact) } });
@@ -189,8 +189,8 @@ test('i18n: all languages (at least 8 beyond English) render wage + photo UI fro
 test('i18n: live-switching through every language never leaves stale text', async () => {
   const p = await page({ lang: 'en' });
   for (const l of LANGS) {
-    p.w.localStorage.setItem('fairshift_lang', l);
-    p.doc.querySelector('#langSelector').dispatchEvent(new p.w.Event('change')); await tick(40);
+    const sel = p.doc.querySelector('#langSelector'); sel.value = l;      // a real <select> changes its value first
+    sel.dispatchEvent(new p.w.Event('change')); await tick(40);
     assert.equal(text(p, '#r3WageSlot h4'), I18N(l).r3_wage_title, `after switching to ${l}`);
   }
 });
@@ -210,4 +210,57 @@ test('i18n: missing key in a bundle falls back to English instead of showing the
   const t = dom.w.__fairshiftR3.t;
   assert.equal(t('r3_does_not_exist'), 'r3_does_not_exist');        // unknown key => visible, not crash
   assert.match(t('r3_pending', { n: 3 }), /3/);
+});
+
+// ---------- regression: the card lagged one language behind (screenshot: Marathi header, Hindi wage card) ----------
+test('i18n race: cards follow the NEW language even though worker.js has not written localStorage yet', async () => {
+  const p = await page({ lang: 'en' });                                   // localStorage still says 'en'
+  const sel = p.doc.querySelector('#langSelector');
+  sel.value = 'mr';
+  sel.dispatchEvent(new p.w.Event('change'));                              // note: localStorage NOT updated (the real race)
+  await tick(60);
+  assert.equal(text(p, '#r3WageSlot h4'), I18N('mr').r3_wage_title);
+  assert.equal(p.doc.querySelector('#r3PhotoSlot button').textContent, I18N('mr').r3_photo_btn);
+});
+
+test('i18n race: the fairshift:langchange event (sent by worker.js) also relabels', async () => {
+  const p = await page({ lang: 'en' });
+  p.w.dispatchEvent(new p.w.CustomEvent('fairshift:langchange', { detail: { lang: 'gu' } }));
+  await tick(60);
+  assert.equal(text(p, '#r3WageSlot h4'), I18N('gu').r3_wage_title);
+});
+
+test('i18n race: rapid switching keeps the LAST choice even if an earlier bundle loads later', async () => {
+  const p = await page({ lang: 'en' });
+  const realFetch = p.w.fetch;
+  p.w.fetch = async (url, init) => {                                       // make Tamil slow, Hindi fast
+    if (url.endsWith('/ta.json')) await tick(120);
+    return realFetch(url, init);
+  };
+  const sel = p.doc.querySelector('#langSelector');
+  sel.value = 'ta'; sel.dispatchEvent(new p.w.Event('change'));
+  sel.value = 'hi'; sel.dispatchEvent(new p.w.Event('change'));
+  await tick(250);
+  assert.equal(text(p, '#r3WageSlot h4'), I18N('hi').r3_wage_title);
+});
+
+test('admin: AI status card explains a missing key and the Test AI button reports success and failure', async () => {
+  const impact = { estimated_annual_wage_protected_inr: 1000, workers_affected: 3, workers_at_fatigue_risk_percent: 12.5,
+    assumptions: { basis: 'b', model: 'm' } };
+  let status = { configured: false, ok_count: 0, error_count: 0, fallback_count: 4, model: 'gemini-2.5-flash' };
+  let self = { ok: true, latency_ms: 812, model: 'gemini-2.5-flash', error: null };
+  const p = await page({ routes: {
+    'GET /api/v1/admin/integrity-check': jsonRes(200, { valid: true, checked: 1, head_hash: 'a'.repeat(64) }),
+    'GET /api/v1/admin/impact': jsonRes(200, impact),
+    'GET /api/v1/admin/ai-status': () => jsonRes(200, status),
+    'POST /api/v1/admin/ai-selftest': () => jsonRes(200, self) } });
+  assert.match(text(p, '#r3AdminSlot'), /NOT CONFIGURED/);
+  assert.match(text(p, '#r3AdminSlot'), /GEMINI_API_KEY in Render/);
+  assert.match(text(p, '#r3AdminSlot'), /37\.5|12\.5% of current workers at fatigue risk/);
+  const btn = [...p.doc.querySelectorAll('#r3AdminSlot button')].find((b) => /Test AI/.test(b.textContent));
+  btn.click(); await tick(60);
+  assert.match(text(p, '#r3AdminSlot'), /AI: LIVE ✓ 812 ms/);
+  self = { ok: false, latency_ms: 40, model: 'm', error: 'ClientError: 429 quota exceeded' };
+  btn.click(); await tick(60);
+  assert.match(text(p, '#r3AdminSlot'), /AI: FAILED/); assert.match(text(p, '#r3AdminSlot'), /429 quota exceeded/);
 });

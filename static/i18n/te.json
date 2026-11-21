@@ -83,5 +83,21 @@
   "r3_wage_expected": "అంచనా చేతికి వచ్చేది: {exp} · మీకు అందింది: {paid}",
   "r3_wage_cause": "సంభావ్య కారణం: ",
   "r3_wage_invalid": "సరైన మొత్తం నమోదు చేయండి.",
-  "r3_checking": "తనిఖీ చేస్తోంది..."
+  "r3_checking": "తనిఖీ చేస్తోంది...",
+  "cat_ppe": "రక్షణ పరికరాలు",
+  "cat_hazard": "ప్రమాదం",
+  "cat_equipment": "పరికరం",
+  "cat_fatigue": "అలసట",
+  "cat_sanitation": "పారిశుద్ధ్యం",
+  "cat_other": "ఇతరం",
+  "sev_low": "తక్కువ",
+  "sev_medium": "మధ్యస్థం",
+  "sev_high": "ఎక్కువ",
+  "sev_critical": "తీవ్రం",
+  "status_label": "స్థితి",
+  "ai_badge_live": "🤖 Gemini డీసెంట్-వర్క్ సహాయకుడు",
+  "ai_badge_offline": "📴 ఆఫ్‌లైన్ టెంప్లేట్ (AI అందుబాటులో లేదు)",
+  "voice_unavailable": "ఈ పరికరంలో ఈ భాషకు వాయిస్ అందుబాటులో లేదు.",
+  "voice_generating": "వాయిస్ సిద్ధమవుతోంది...",
+  "explain_generating": "వివరణ సిద్ధమవుతోంది..."
 }

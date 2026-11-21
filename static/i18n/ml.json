@@ -83,5 +83,21 @@
   "r3_wage_expected": "പ്രതീക്ഷിത കൈയിൽ കിട്ടുന്ന ശമ്പളം: {exp} · നിങ്ങൾക്ക് ലഭിച്ചത്: {paid}",
   "r3_wage_cause": "സാധ്യമായ കാരണം: ",
   "r3_wage_invalid": "ശരിയായ തുക നൽകുക.",
-  "r3_checking": "പരിശോധിക്കുന്നു..."
+  "r3_checking": "പരിശോധിക്കുന്നു...",
+  "cat_ppe": "സുരക്ഷാ ഉപകരണം",
+  "cat_hazard": "അപകടം",
+  "cat_equipment": "ഉപകരണം",
+  "cat_fatigue": "ക്ഷീണം",
+  "cat_sanitation": "ശുചിത്വം",
+  "cat_other": "മറ്റുള്ളവ",
+  "sev_low": "കുറവ്",
+  "sev_medium": "ഇടത്തരം",
+  "sev_high": "ഉയർന്നത്",
+  "sev_critical": "ഗുരുതരം",
+  "status_label": "നില",
+  "ai_badge_live": "🤖 Gemini ഡീസന്റ്-വർക്ക് സഹായി",
+  "ai_badge_offline": "📴 ഓഫ്‌ലൈൻ ടെംപ്ലേറ്റ് (AI ലഭ്യമല്ല)",
+  "voice_unavailable": "ഈ ഉപകരണത്തിൽ ഈ ഭാഷയുടെ ശബ്ദം ലഭ്യമല്ല.",
+  "voice_generating": "ശബ്ദം തയ്യാറാക്കുന്നു...",
+  "explain_generating": "വിശദീകരണം തയ്യാറാക്കുന്നു..."
 }

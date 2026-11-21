@@ -83,5 +83,21 @@
   "r3_wage_expected": "ನಿರೀಕ್ಷಿತ ಕೈಗೆ ಬರುವ ವೇತನ: {exp} · ನಿಮಗೆ ಸಿಕ್ಕಿದ್ದು: {paid}",
   "r3_wage_cause": "ಸಂಭವನೀಯ ಕಾರಣ: ",
   "r3_wage_invalid": "ಸರಿಯಾದ ಮೊತ್ತ ನಮೂದಿಸಿ.",
-  "r3_checking": "ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ..."
+  "r3_checking": "ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
+  "cat_ppe": "ರಕ್ಷಣಾ ಸಾಧನ",
+  "cat_hazard": "ಅಪಾಯ",
+  "cat_equipment": "ಉಪಕರಣ",
+  "cat_fatigue": "ಆಯಾಸ",
+  "cat_sanitation": "ನೈರ್ಮಲ್ಯ",
+  "cat_other": "ಇತರೆ",
+  "sev_low": "ಕಡಿಮೆ",
+  "sev_medium": "ಮಧ್ಯಮ",
+  "sev_high": "ಹೆಚ್ಚು",
+  "sev_critical": "ಗಂಭೀರ",
+  "status_label": "ಸ್ಥಿತಿ",
+  "ai_badge_live": "🤖 Gemini ಡೀಸೆಂಟ್-ವರ್ಕ್ ಸಹಾಯಕ",
+  "ai_badge_offline": "📴 ಆಫ್‌ಲೈನ್ ಟೆಂಪ್ಲೇಟ್ (AI ಲಭ್ಯವಿಲ್ಲ)",
+  "voice_unavailable": "ಈ ಸಾಧನದಲ್ಲಿ ಈ ಭಾಷೆಯ ಧ್ವನಿ ಲಭ್ಯವಿಲ್ಲ.",
+  "voice_generating": "ಧ್ವನಿ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+  "explain_generating": "ವಿವರಣೆ ಸಿದ್ಧವಾಗುತ್ತಿದೆ..."
 }

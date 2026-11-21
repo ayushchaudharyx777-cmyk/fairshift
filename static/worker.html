@@ -233,15 +233,15 @@
           <div class="payslip-legend">
             <div class="legend-item">
               <span class="legend-color-dot" style="background: #14B8A6;"></span>
-              <span>Base Pay: <strong id="legendBasePay">₹0</strong></span>
+              <span><span id="i18n-legend-base">Base Pay</span>: <strong id="legendBasePay">₹0</strong></span>
             </div>
             <div class="legend-item">
               <span class="legend-color-dot" style="background: #10B981;"></span>
-              <span>2x OT Bonus: <strong id="legendOtPay">₹0</strong></span>
+              <span><span id="i18n-legend-ot">2x OT Bonus</span>: <strong id="legendOtPay">₹0</strong></span>
             </div>
             <div class="legend-item">
               <span class="legend-color-dot" style="background: #F59E0B;"></span>
-              <span>PF/ESI: <strong id="legendDedPay">₹0</strong></span>
+              <span><span id="i18n-legend-ded">PF/ESI</span>: <strong id="legendDedPay">₹0</strong></span>
             </div>
           </div>
 
@@ -262,7 +262,7 @@
         <!-- AI Spoken/Text Output Box -->
         <div id="aiExplanationContainer" class="ai-explanation-box" style="display: none;">
           <div class="ai-box-header">
-            <span class="ai-badge">🤖 Gemini Decent-Work Assistant</span>
+            <span class="ai-badge" id="aiBadge">🤖 Gemini Decent-Work Assistant</span>
             <button id="btnStopSpeech" class="btn btn-secondary btn-sm" style="display: none;">Stop ⏹</button>
           </div>
           <div id="aiExplanationText" class="ai-text">

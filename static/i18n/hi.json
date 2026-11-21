@@ -83,5 +83,21 @@
   "r3_wage_expected": "अपेक्षित हाथ में आने वाला वेतन: {exp} · आपको मिला: {paid}",
   "r3_wage_cause": "संभावित कारण: ",
   "r3_wage_invalid": "सही राशि डालें।",
-  "r3_checking": "जांच हो रही है..."
+  "r3_checking": "जांच हो रही है...",
+  "cat_ppe": "सुरक्षा उपकरण",
+  "cat_hazard": "खतरा",
+  "cat_equipment": "उपकरण",
+  "cat_fatigue": "थकान",
+  "cat_sanitation": "स्वच्छता",
+  "cat_other": "अन्य",
+  "sev_low": "कम",
+  "sev_medium": "मध्यम",
+  "sev_high": "उच्च",
+  "sev_critical": "गंभीर",
+  "status_label": "स्थिति",
+  "ai_badge_live": "🤖 Gemini डिसेंट-वर्क सहायक",
+  "ai_badge_offline": "📴 ऑफ़लाइन टेम्पलेट (AI उपलब्ध नहीं)",
+  "voice_unavailable": "इस डिवाइस पर इस भाषा की आवाज़ उपलब्ध नहीं है।",
+  "voice_generating": "आवाज़ तैयार हो रही है...",
+  "explain_generating": "विवरण तैयार हो रहा है..."
 }

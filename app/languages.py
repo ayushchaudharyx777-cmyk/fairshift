@@ -58,6 +58,21 @@ def has_native_script(text: str) -> bool:
     return any(_INDIC_RANGE[0] <= ord(ch) <= _INDIC_RANGE[1] for ch in text)
 
 
+_SCRIPT_RANGES = (  # (first, last, language code); Devanagari maps to Hindi (Marathi shares the script)
+    (0x0900, 0x097F, "hi"), (0x0980, 0x09FF, "bn"), (0x0A80, 0x0AFF, "gu"), (0x0B80, 0x0BFF, "ta"),
+    (0x0C00, 0x0C7F, "te"), (0x0C80, 0x0CFF, "kn"), (0x0D00, 0x0D7F, "ml"),
+)
+
+
+def detect_language(text: str) -> str:
+    """Best-effort language code from the script of `text`; English when no Indic script is present."""
+    for ch in text:
+        for lo, hi, code in _SCRIPT_RANGES:
+            if lo <= ord(ch) <= hi:
+                return code
+    return DEFAULT_LANGUAGE
+
+
 # Offline / AI-down fallback texts for languages that have no hand-written branch in ai.py (hi, ta, en keep theirs).
 # Placeholders: triage -> {category} {severity}; payslip -> {name} {reg} {base} {ot_h} {ot_pay} {ded} {net}
 FALLBACKS: Dict[str, Dict[str, str]] = {

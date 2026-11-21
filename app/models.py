@@ -52,6 +52,8 @@ class SafetyReport(BaseModel):
     resolved_at: Optional[str] = None
     # Round 3: provenance + tamper-evidence (all optional => backward compatible)
     source: str = "text"  # "text" | "voice" | "photo"
+    language: str = "en"  # language the worker reported in (summary_local is written in it)
+    ai_source: str = "manual"  # "gemini" | "fallback" | "manual" (seed data)
     prev_hash: Optional[str] = None
     hash: Optional[str] = None
 
@@ -210,6 +212,12 @@ class ExplainPayslipResponse(BaseModel):
     explanation: str
     language: str
     speech_lang: str
+    source: str = "fallback"  # "gemini" when the text came from the live model, "fallback" for the offline template
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1500)
+    language: str = Field("en", pattern=LANGUAGE_PATTERN)
 
 
 class KPIStatsResponse(BaseModel):

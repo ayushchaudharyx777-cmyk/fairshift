@@ -17,6 +17,7 @@ from app.security import (
 from app.services.fatigue import detect_fatigue_alerts
 from app.services.integrity import verify_chain
 from app.services.impact import estimate_impact
+from app.services import ai as ai_service
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin API"])
 
@@ -333,4 +334,17 @@ async def impact_estimate(
     all_workers = repo.get_workers()
     shifts = repo.get_shifts()
     alerts = detect_fatigue_alerts(all_workers, repo.get_sites(), shifts)
-    return estimate_impact(all_workers, repo.get_sites(), shifts, len(alerts), workers, theft_rate)
+    workers_at_risk = len({a.worker_id for a in alerts})
+    return estimate_impact(all_workers, repo.get_sites(), shifts, workers_at_risk, workers, theft_rate)
+
+
+@router.get("/ai-status")
+async def ai_status(authorized: bool = Depends(require_admin_auth)) -> Dict[str, Any]:
+    """Is Gemini configured, and how have recent calls gone? (never returns the key)"""
+    return ai_service.ai_status()
+
+
+@router.post("/ai-selftest")
+async def ai_selftest(authorized: bool = Depends(require_admin_auth)) -> Dict[str, Any]:
+    """Make one tiny real Gemini call and report ok / latency / error."""
+    return await ai_service.ai_selftest()

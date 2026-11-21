@@ -83,5 +83,21 @@
   "r3_wage_expected": "अपेक्षित हातात येणारे वेतन: {exp} · तुम्हाला मिळाले: {paid}",
   "r3_wage_cause": "संभाव्य कारण: ",
   "r3_wage_invalid": "योग्य रक्कम टाका.",
-  "r3_checking": "तपासत आहे..."
+  "r3_checking": "तपासत आहे...",
+  "cat_ppe": "सुरक्षा उपकरणे",
+  "cat_hazard": "धोका",
+  "cat_equipment": "उपकरण",
+  "cat_fatigue": "थकवा",
+  "cat_sanitation": "स्वच्छता",
+  "cat_other": "इतर",
+  "sev_low": "कमी",
+  "sev_medium": "मध्यम",
+  "sev_high": "उच्च",
+  "sev_critical": "गंभीर",
+  "status_label": "स्थिती",
+  "ai_badge_live": "🤖 Gemini डिसेंट-वर्क सहाय्यक",
+  "ai_badge_offline": "📴 ऑफलाइन टेम्पलेट (AI उपलब्ध नाही)",
+  "voice_unavailable": "या डिव्हाइसवर या भाषेचा आवाज उपलब्ध नाही.",
+  "voice_generating": "आवाज तयार होत आहे...",
+  "explain_generating": "स्पष्टीकरण तयार होत आहे..."
 }

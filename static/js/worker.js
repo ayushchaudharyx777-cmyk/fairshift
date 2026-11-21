@@ -17,6 +17,11 @@
   let speechRecognition = null;
   let isListening = false;
   let currentFeedbackRatings = { manager: 5, conditions: 5 };
+  let lastSafetyReports = null;       // so reports can be re-rendered instantly when the language changes
+  let lastExplainLang = null;         // language of the explanation currently on screen
+  let lastExplainSource = 'gemini';   // 'gemini' | 'fallback'
+  let explainSeq = 0;                 // drops stale responses when the language is switched mid-request
+  let currentAudio = null;            // server-generated voice (WAV) currently playing
 
   // DOM Elements
   const langSelector = document.getElementById('langSelector');
@@ -93,10 +98,21 @@
         document.documentElement.lang = lang;
         localStorage.setItem('fairshift_lang', lang);
         applyTranslations();
+        onLanguageChanged();
       }
     } catch (e) {
       console.warn('Could not load i18n bundle:', e);
     }
+  }
+
+  // One language switch updates EVERYTHING: static UI, safety cards, the AI explanation and any voice playing.
+  function onLanguageChanged() {
+    stopSpeech();
+    if (lastSafetyReports) renderSafetyReports(lastSafetyReports);
+    const box = document.getElementById('aiExplanationContainer');
+    if (box && box.style.display !== 'none' && lastExplainLang !== currentLang) explainPayslip();   // also covers a request still in flight
+    else updateAiBadge();
+    window.dispatchEvent(new CustomEvent('fairshift:langchange', { detail: { lang: currentLang } }));
   }
 
   function applyTranslations() {
@@ -123,6 +139,17 @@
     setText('i18n-recent-shifts', 'recent_shifts');
     setText('i18n-payslip-title', 'payslip_title');
     setText('i18n-explain-btn', 'explain_payslip_btn');
+    setText('i18n-total-net', 'total_earnings');
+    setText('i18n-legend-base', 'base_pay');
+    setText('i18n-legend-ot', 'overtime_pay');
+    setText('i18n-legend-ded', 'deductions');
+    const setPlaceholder = (id, key) => {
+      const el = document.getElementById(id);
+      if (el && s[key]) el.setAttribute('placeholder', s[key]);
+    };
+    setPlaceholder('safetyTextInput', 'type_safety_placeholder');
+    setPlaceholder('feedbackCommentInput', 'feedback_comments_placeholder');
+    setPlaceholder('shiftNotesInput', 'shift_notes_placeholder');
     setText('i18n-listen-btn', 'listen_btn');
     setText('i18n-safety-title', 'safety_title');
     setText('i18n-safety-subtitle', 'safety_subtitle');
@@ -569,65 +596,130 @@
   }
 
   // Gemini AI Payslip Explanation
-  document.getElementById('btnExplainPayslip').addEventListener('click', async () => {
+  function tr(key, fallback) { return i18nStrings[key] || fallback; }
+
+  function updateAiBadge() {
+    const badge = document.getElementById('aiBadge');
+    if (!badge) return;
+    badge.textContent = lastExplainSource === 'gemini'
+      ? tr('ai_badge_live', '🤖 Gemini Decent-Work Assistant')
+      : tr('ai_badge_offline', '📴 Offline template (AI unavailable)');
+    badge.style.opacity = lastExplainSource === 'gemini' ? '1' : '0.75';
+  }
+
+  async function explainPayslip() {
     const btn = document.getElementById('btnExplainPayslip');
+    const label = document.getElementById('i18n-explain-btn');
     const container = document.getElementById('aiExplanationContainer');
     const textEl = document.getElementById('aiExplanationText');
     const listenBtn = document.getElementById('btnListenPayslip');
+    const mySeq = ++explainSeq;
+    const lang = currentLang;
 
     btn.disabled = true;
-    btn.textContent = 'Generating explanation...';
     container.style.display = 'flex';
-    textEl.textContent = 'Connecting to Gemini AI assistant...';
-
+    textEl.textContent = tr('explain_generating', 'Generating explanation...');
     try {
       const res = await fetch('/api/v1/worker/payslip/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: currentLang })
+        body: JSON.stringify({ language: lang })
       });
-
+      if (mySeq !== explainSeq) return;           // user switched language meanwhile; a newer request owns the UI
       if (res.ok) {
         const data = await res.json();
         textEl.textContent = data.explanation;
+        lastExplainLang = lang;
+        lastExplainSource = data.source || 'fallback';
+        updateAiBadge();
         listenBtn.style.display = 'inline-flex';
-        // Auto trigger or offer speech
       } else {
         textEl.textContent = 'Could not generate explanation at this moment. Please check connection.';
       }
     } catch (e) {
-      textEl.textContent = 'Error connecting to explanation service.';
+      if (mySeq === explainSeq) textEl.textContent = 'Error connecting to explanation service.';
     } finally {
-      btn.disabled = false;
-      btn.textContent = i18nStrings.explain_payslip_btn || 'Explain in My Language';
+      if (mySeq === explainSeq) btn.disabled = false;
+      if (label && i18nStrings.explain_payslip_btn) label.textContent = i18nStrings.explain_payslip_btn;
     }
-  });
+  }
+  document.getElementById('btnExplainPayslip').addEventListener('click', explainPayslip);
 
-  // Web Speech API Voice Readout
+  // --- Voice readout: device voice when one exists for the language, otherwise Gemini TTS from the server ---
+  function stopSpeech() {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    const stopBtn = document.getElementById('btnStopSpeech');
+    if (stopBtn) stopBtn.style.display = 'none';
+  }
+
+  function pickVoice(tag) {
+    const voices = window.speechSynthesis.getVoices() || [];
+    const want = tag.toLowerCase();
+    const prefix = want.split('-')[0];
+    return voices.find((v) => v.lang.toLowerCase().replace('_', '-') === want)
+      || voices.find((v) => v.lang.toLowerCase().replace('_', '-').startsWith(prefix))
+      || null;
+  }
+
+  function waitForVoices(ms) {
+    return new Promise((resolve) => {
+      if (window.speechSynthesis.getVoices().length) return resolve();
+      const done = () => { window.speechSynthesis.removeEventListener('voiceschanged', done); resolve(); };
+      window.speechSynthesis.addEventListener('voiceschanged', done);
+      setTimeout(done, ms);
+    });
+  }
+
+  async function speakText(text, lang) {
+    stopSpeech();
+    const stopBtn = document.getElementById('btnStopSpeech');
+    const tag = SPEECH_LANG[lang] || 'en-IN';
+
+    if ('speechSynthesis' in window) {
+      await waitForVoices(1200);
+      const voice = pickVoice(tag);
+      if (voice) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+        utterance.rate = 0.95;
+        utterance.onend = () => { stopBtn.style.display = 'none'; };
+        utterance.onerror = () => { stopBtn.style.display = 'none'; };
+        stopBtn.style.display = 'inline-block';
+        window.speechSynthesis.speak(utterance);
+        return true;
+      }
+    }
+
+    // No installed voice for this language (common on Windows): ask the server for Gemini speech.
+    showToast('🔊', tr('voice_generating', 'Preparing voice...'), false);
+    try {
+      const res = await fetch('/api/v1/worker/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, language: lang })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      currentAudio = audio;
+      audio.onended = () => { stopBtn.style.display = 'none'; currentAudio = null; URL.revokeObjectURL(url); };
+      stopBtn.style.display = 'inline-block';
+      await audio.play();
+      return true;
+    } catch (e) {
+      stopBtn.style.display = 'none';
+      showToast('Speech Error', tr('voice_unavailable', 'Voice for this language is not available on this device.'), true);
+      return false;
+    }
+  }
+
+  document.getElementById('btnStopSpeech').addEventListener('click', stopSpeech);
   document.getElementById('btnListenPayslip').addEventListener('click', () => {
     const text = document.getElementById('aiExplanationText').textContent;
-    if (!text || !('speechSynthesis' in window)) {
-      showToast('Speech Error', 'Voice synthesis is not supported on this browser.', true);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = SPEECH_LANG[currentLang] || 'en-IN';
-    utterance.rate = 0.95;
-
-    const stopBtn = document.getElementById('btnStopSpeech');
-    stopBtn.style.display = 'inline-block';
-
-    utterance.onend = () => { stopBtn.style.display = 'none'; };
-    utterance.onerror = () => { stopBtn.style.display = 'none'; };
-
-    stopBtn.onclick = () => {
-      window.speechSynthesis.cancel();
-      stopBtn.style.display = 'none';
-    };
-
-    window.speechSynthesis.speak(utterance);
+    if (!text) return;
+    speakText(text, lastExplainLang || currentLang);
   });
 
   // --- 7. Glowing Voice Orb & Safety Reporting ---
@@ -739,6 +831,7 @@
       const res = await fetch('/api/v1/worker/safety-reports');
       if (res.ok) {
         const reports = await res.json();
+        lastSafetyReports = reports;
         renderSafetyReports(reports);
       }
     } catch (e) {
@@ -765,17 +858,18 @@
 
       const catBadge = document.createElement('span');
       catBadge.className = 'badge badge-info';
-      catBadge.textContent = r.category.toUpperCase();
+      catBadge.textContent = tr('cat_' + r.category, r.category).toUpperCase();
 
       const sevBadge = document.createElement('span');
       sevBadge.className = `badge ${r.severity === 'critical' ? 'badge-critical' : r.severity === 'high' ? 'badge-warning' : 'badge-info'}`;
-      sevBadge.textContent = r.severity.toUpperCase();
+      sevBadge.textContent = tr('sev_' + r.severity, r.severity).toUpperCase();
 
       top.appendChild(catBadge);
       top.appendChild(sevBadge);
 
       // Worker's own language first (bold) when it is not English; English follows as the reference line
-      const localFirst = currentLang !== 'en';
+      // The local summary is only shown when it is in the language currently selected; otherwise the English line.
+      const localFirst = currentLang !== 'en' && (r.language || 'en') === currentLang;
       const primaryStyle = 'font-size: 0.88rem; color: var(--text-primary); font-weight: 600;';
       const secondaryStyle = 'font-size: 0.8rem; color: var(--text-secondary);';
 
@@ -793,7 +887,7 @@
       const statusSpan = document.createElement('span');
       statusSpan.style.fontWeight = '700';
       statusSpan.style.color = r.status === 'Resolved' ? 'var(--color-success)' : r.status === 'Acknowledged' ? 'var(--color-info)' : 'var(--color-warning)';
-      statusSpan.textContent = `Status: ${r.status}`;
+      statusSpan.textContent = `${tr('status_label', 'Status')}: ${tr('status_' + r.status.toLowerCase(), r.status)}`;
 
       const timeSpan = document.createElement('span');
       timeSpan.textContent = new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -802,8 +896,13 @@
       foot.appendChild(timeSpan);
 
       card.appendChild(top);
-      card.appendChild(localFirst ? pLoc : pEn);
-      card.appendChild(localFirst ? pEn : pLoc);
+      if (localFirst) {
+        card.appendChild(pLoc);
+        card.appendChild(pEn);
+      } else {
+        pEn.style.cssText = primaryStyle;
+        card.appendChild(pEn);
+      }
       card.appendChild(foot);
       safetyReportsContainer.appendChild(card);
     });

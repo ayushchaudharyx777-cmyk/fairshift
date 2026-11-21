@@ -83,5 +83,21 @@
   "r3_wage_expected": "প্রত্যাশিত হাতে পাওয়া বেতন: {exp} · আপনি পেয়েছেন: {paid}",
   "r3_wage_cause": "সম্ভাব্য কারণ: ",
   "r3_wage_invalid": "সঠিক পরিমাণ লিখুন।",
-  "r3_checking": "যাচাই করা হচ্ছে..."
+  "r3_checking": "যাচাই করা হচ্ছে...",
+  "cat_ppe": "সুরক্ষা সরঞ্জাম",
+  "cat_hazard": "ঝুঁকি",
+  "cat_equipment": "সরঞ্জাম",
+  "cat_fatigue": "ক্লান্তি",
+  "cat_sanitation": "স্বাস্থ্যবিধি",
+  "cat_other": "অন্যান্য",
+  "sev_low": "কম",
+  "sev_medium": "মাঝারি",
+  "sev_high": "উচ্চ",
+  "sev_critical": "গুরুতর",
+  "status_label": "অবস্থা",
+  "ai_badge_live": "🤖 Gemini ডিসেন্ট-ওয়ার্ক সহকারী",
+  "ai_badge_offline": "📴 অফলাইন টেমপ্লেট (AI অনুপলব্ধ)",
+  "voice_unavailable": "এই ডিভাইসে এই ভাষার ভয়েস নেই।",
+  "voice_generating": "ভয়েস তৈরি হচ্ছে...",
+  "explain_generating": "ব্যাখ্যা তৈরি হচ্ছে..."
 }
